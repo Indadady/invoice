@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <!-- 🚨 Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JLH9GD9SVR"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JLH9GD9SVR');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>투어메이커 Quick Tools - 관공서용 견적서/청구서</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Nanum+Myeongjo:wght@700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            background-color: #f1f5f9; 
+            color: #1e293b; 
+        }
+
+        /* 🖨️ A4 용지 규격 설정 */
+        .a4-page {
+            background-color: white;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto 2rem auto;
+            padding: 20mm 15mm; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .doc-title { font-size: 24pt; font-weight: 900; color: #1e293b; text-align: center; letter-spacing: 1rem; margin-bottom: 5mm; }
+        .doc-title-eng { font-size: 10pt; font-weight: bold; color: #64748b; text-align: center; letter-spacing: 0.5rem; margin-bottom: 15mm; }
+        
+        /* 전자도장 시스템 */
+        .stamp-box {
+            position: absolute;
+            width: 65px;
+            height: 65px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            z-index: 10;
+            pointer-events: none;
+            right: -25px; 
+            top: -20px;
+        }
+        .stamp-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            mix-blend-mode: multiply;
+            opacity: 0.95;
+            transform-origin: center center;
+            display: block;
+        }
+        /* 도장 크기 개별 미세조정 */
+        .stamp-box[data-rep="lee"] .stamp-img { transform: scale(1.1); }
+        .stamp-box[data-rep="heo"] .stamp-img { transform: scale(2.6) translateY(1px); }
+
+        /* 테이블 공통 스타일 */
+        .q-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 10.5pt; border-top: 2px solid #1e293b; border-bottom: 2px solid #1e293b; }
+        .q-table th { padding: 12px 6px; border-bottom: 1px solid #cbd5e1; background-color: #f8fafc; font-weight: bold; color: #334155;}
+        .q-table td { padding: 12px 6px; border-bottom: 1px solid #e2e8f0; line-height: 1.4; vertical-align: middle; position: relative;}
+        .q-table tr:last-child td { border-bottom: none; }
+        .q-table td.desc-col { text-align: left; padding-left: 12px; }
+        
+        /* 테이블 합계 스타일 */
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: -2px; font-size: 11pt; }
+        .summary-table td { padding: 10px 16px; border-bottom: 1px solid #cbd5e1; text-align: right; }
+        .summary-table td.label-col { background-color: #f8fafc; font-weight: bold; text-align: center; width: 75%; border-right: 1px solid #cbd5e1;}
+        .summary-table tr.grand-total td { background-color: #eef2f9; font-weight: 900; font-size: 12pt; border-bottom: 2px solid #1e293b;}
+
+        /* 에디터 UI 요소 */
+        [contenteditable="true"] { outline: none; padding: 2px 4px; transition: background 0.2s; border-radius: 4px; min-height: 1em; box-sizing: border-box;}
+        [contenteditable="true"]:hover { background-color: #fefce8; cursor: text; box-shadow: inset 0 0 0 1px #eab308; }
+        [contenteditable="true"]:focus { background-color: #fffbeb; box-shadow: inset 0 0 0 1px #3b82f6; }
+        
+        /* 삭제 버튼 */
+        .row-ctrl { position: absolute; right: -25px; top: 50%; transform: translateY(-50%); display: flex; opacity: 0.2; transition: 0.2s; z-index: 20; }
+        tr:hover .row-ctrl { opacity: 1; }
+
+        /* footer-logo 삭제 (레이아웃 개선으로 미사용) */
+
+        @media print {
+            @page { size: A4 portrait; margin: 0; } 
+            body { background-color: white !important; margin: 0; }
+            #sidebar, header, footer, .print-hidden, .row-ctrl { display: none !important; }
+            #main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
+            .a4-page { box-shadow: none; margin: 0; padding: 20mm 15mm; width: 210mm; height: 297mm; page-break-after: always; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .a4-page.hidden { display: none !important; page-break-after: auto; }
+            [contenteditable="true"] { box-shadow: none !important; background-color: transparent !important; }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center">
+                <a href="http://tourmaker.kr" target="_blank">
+                    <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" alt="Tourmaker" class="h-6">
+                </a>
+                <span class="mx-3 text-slate-300 text-xl font-light">|</span>
+                <span class="font-bold text-slate-700 text-lg tracking-wide">Quick Tools: 견적서·청구서</span>
+            </div>
+            <div>
+                <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white text-sm font-bold py-2 px-5 rounded shadow transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf"></i> PDF 내보내기
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden h-full flex-col md:flex-row" id="main-content">
+        
+        <!-- 좌측: 사이드바 제어부 -->
+        <aside id="sidebar" class="w-full md:w-80 lg:w-[400px] bg-white border-r border-slate-200 p-6 overflow-y-auto flex flex-col gap-6 shadow-[10px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 shrink-0">
+            
+            <!-- 문서 종류 선택 -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">작성할 문서 선택</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setMode('quotation')" id="btn-quotation" class="bg-blue-600 text-white font-bold py-3 rounded-lg border border-blue-600 transition shadow-sm text-sm">견적서 (Quotation)</button>
+                    <button onclick="setMode('invoice')" id="btn-invoice" class="bg-white text-slate-600 font-bold py-3 rounded-lg border border-slate-300 hover:bg-slate-50 transition text-sm">청구서 (Invoice)</button>
+                </div>
+            </div>
+
+            <!-- 법인/대표자 선택 -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs font-bold text-slate-700"><i class="fa-solid fa-building mr-1"></i> 발신처 설정</label>
+                    <label class="flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded transition border border-slate-200 shadow-sm">
+                        <input type="checkbox" id="toggle-stamp-chk" checked onchange="toggleStamp()" class="w-3 h-3 text-blue-600 rounded cursor-pointer">
+                        <span class="text-[10px] font-bold text-slate-700">직인 노출</span>
+                    </label>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setRep('lee')" id="btn-rep-lee" class="bg-blue-100 text-blue-800 font-bold py-2 rounded border border-blue-300 transition text-xs">주)투어메이커<br><span class="text-[10px] font-normal">이재명 대표</span></button>
+                    <button onclick="setRep('heo')" id="btn-rep-heo" class="bg-white text-slate-600 font-bold py-2 rounded border border-slate-300 hover:bg-slate-50 transition text-xs">투어메이커<br><span class="text-[10px] font-normal">허나연 대표</span></button>
+                </div>
+            </div>
+
+            <!-- 공통 정보 입력 -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">문서번호 (Doc No.)</label>
+                    <input type="text" id="in-doc-no" value="TM-260512" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" oninput="updateDoc()">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">작성일자 (Date)</label>
+                    <input type="date" id="in-date" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" onchange="updateDoc()">
+                </div>
+                
+                <div class="border-t border-slate-200 pt-4">
+                    <label class="block text-xs font-bold text-slate-700 mb-1 text-indigo-700"><i class="fa-solid fa-user-tie"></i> 수신처 정보</label>
+                    <input type="text" id="in-school" value="정선군청 환경과" placeholder="기관명/부서명" class="w-full border border-slate-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:border-blue-500" oninput="updateDoc()">
+                    <input type="text" id="in-school-addr" value="강원도 정선군 정선읍 봉양 3길 21" placeholder="주소" class="w-full border border-slate-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:border-blue-500" oninput="updateDoc()">
+                    <input type="text" id="in-school-manager" value="담당자님" placeholder="수신자 (예: 담당자님, 홍길동 주무관님)" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" oninput="updateDoc()">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">용역명 (내용)</label>
+                    <input type="text" id="in-title" value="일본 선진 환경시설 벤치마킹" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" oninput="updateDoc()">
+                </div>
+            </div>
+
+            <!-- 견적서 전용 설정 -->
+            <div id="quotation-settings" class="space-y-4 border-t border-slate-200 pt-4">
+                <div class="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    <label class="block text-xs font-bold text-amber-800 mb-2"><i class="fa-solid fa-calculator"></i> 견적서 설정</label>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-slate-700">부가세 (VAT) 처리</span>
+                        <select id="in-vat-type" class="border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500" onchange="calcTable()">
+                            <option value="included" selected>부가세 포함 (Included)</option>
+                            <option value="excluded">부가세 별도 (Excluded 10%)</option>
+                            <option value="zero">영세율 (Zero-Rated 0%)</option>
+                        </select>
+                    </div>
+                    <button onclick="addQuotationRow()" class="w-full bg-white border border-amber-400 text-amber-700 font-bold py-2 rounded text-xs hover:bg-amber-100 transition shadow-sm">
+                        <i class="fa-solid fa-plus"></i> 견적 품목 행 추가
+                    </button>
+                    <p class="text-[10px] text-amber-600 mt-2 text-center">우측 렌더링 화면의 표 안에서 텍스트와 숫자를 직접 수정하세요. 합계는 자동 계산됩니다.</p>
+                </div>
+            </div>
+
+            <!-- 청구서 전용 설정 -->
+            <div id="invoice-settings" class="space-y-4 border-t border-slate-200 pt-4 hidden">
+                <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                    <label class="block text-xs font-bold text-emerald-800 mb-3"><i class="fa-solid fa-file-invoice-dollar"></i> 청구서 금액 설정</label>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-1">최초 계약금액 (원)</label>
+                            <input type="text" id="in-inv-total" value="4,800,000" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" oninput="formatInputField(this); updateInvoiceCalc()">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-1">최종 정산(계약)금액 (원)</label>
+                            <input type="text" id="in-inv-settle" value="4,800,000" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 font-bold text-slate-800" oninput="formatInputField(this); updateInvoiceCalc()">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-1">기수령 선금액 (원)</label>
+                            <input type="text" id="in-inv-advance" value="0" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 text-blue-600" oninput="formatInputField(this); updateInvoiceCalc()">
+                        </div>
+                    </div>
+                    <div class="mt-4 border-t border-emerald-200 pt-3">
+                        <div class="flex justify-between items-center font-black">
+                            <span class="text-xs text-slate-700">최종 청구금액:</span>
+                            <span class="text-sm text-red-600">₩ <span id="side-final-krw">0</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 입금 기한 (공통 하단) -->
+            <div class="pt-2">
+                <label class="block text-xs font-bold text-slate-700 mb-1">입금 기한 (Due Date) <span class="text-slate-400 font-normal">선택사항</span></label>
+                <input type="text" id="in-due-date" placeholder="예: 청구일로부터 14일 이내" value="청구일로부터 14일 이내" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" oninput="updateDoc()">
+            </div>
+
+            <!-- JSON 데이터 백업/업로드 버튼 추가 -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-4">
+                <label class="block text-xs font-bold text-slate-700 mb-2"><i class="fa-solid fa-save mr-1"></i> 데이터 백업/복구 (JSON)</label>
+                <div class="flex gap-2">
+                    <button onclick="exportJSON()" class="w-1/2 bg-white text-emerald-600 border border-emerald-400 text-xs py-2 rounded hover:bg-emerald-50 transition font-bold shadow-sm flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-download"></i> 파일 저장
+                    </button>
+                    <label class="w-1/2 bg-white text-blue-600 border border-blue-400 text-xs py-2 rounded text-center cursor-pointer hover:bg-blue-50 transition font-bold shadow-sm flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-upload"></i> 불러오기
+                        <input type="file" id="import-file" class="hidden" accept=".json" onchange="importJSON(event)">
+                    </label>
+                </div>
+            </div>
+            
+            <div class="flex-1"></div>
+            <button onclick="resetAll()" class="text-xs text-slate-400 underline text-center hover:text-slate-600 print-hidden">초기화 및 새로고침</button>
+        </aside>
+
+        <!-- 우측: A4 렌더링 패널 (출력부) -->
+        <main class="flex-1 bg-[#e2e8f0] p-4 md:p-8 overflow-y-auto" id="doc-container">
+            
+            <!-- ========================================== -->
+            <!-- 1. 견적서 (Quotation) -->
+            <!-- ========================================== -->
+            <div id="page-quotation" class="a4-page">
+                <h1 class="doc-title">견 적 서</h1>
+                <div class="doc-title-eng">QUOTATION</div>
+                
+                <!-- 기본 정보 헤더 -->
+                <div class="flex justify-between text-[10pt] mb-8 border-b-2 border-slate-800 pb-4">
+                    <div class="space-y-1">
+                        <div class="flex"><div class="w-32 font-bold text-slate-600">문서번호 (Doc No.)</div><div class="w-4">:</div><div class="font-bold out-doc-no text-slate-800"></div></div>
+                        <div class="flex"><div class="w-32 font-bold text-slate-600">작성일자 (Date)</div><div class="w-4">:</div><div class="font-bold out-date-korean text-slate-800"></div></div>
+                    </div>
+                </div>
+
+                <!-- 수/발신처 정보 -->
+                <div class="flex justify-between mb-10 h-36">
+                    <!-- 수신 -->
+                    <div class="w-[48%] border border-slate-300 rounded-lg p-4 flex flex-col justify-center bg-slate-50 relative">
+                        <div class="absolute -top-3 left-4 bg-slate-50 px-2 font-black text-slate-800 text-[11pt]">수 신 (TO)</div>
+                        <div class="font-bold text-[13pt] text-blue-900 mb-1"><span class="out-school"></span> 귀중</div>
+                        <div class="text-[10pt] text-slate-600 mb-2 out-school-addr leading-tight"></div>
+                        <div class="text-[11pt] font-bold text-slate-800 mt-auto">담당자: <span class="out-school-manager"></span></div>
+                    </div>
+                    
+                    <!-- 발신 -->
+                    <div class="w-[48%] border border-slate-300 rounded-lg p-4 flex flex-col justify-center bg-white relative">
+                        <div class="absolute -top-3 left-4 bg-white px-2 font-black text-slate-800 text-[11pt]">발 신 (FROM)</div>
+                        <div class="font-bold text-[12pt] text-slate-800 mb-1 out-rep-company"></div>
+                        <div class="text-[9pt] text-slate-600 leading-tight mb-1 out-rep-addr"></div>
+                        <div class="text-[9pt] text-slate-600 mb-2 out-rep-phone"></div>
+                        <div class="mt-auto relative">
+                            <span class="font-bold text-[11pt] tracking-widest text-slate-800">대 표 : <span class="out-rep-name"></span></span>
+                            <span class="relative inline-block ml-1">
+                                <span class="px-2 text-slate-600">(인)</span>
+                                <div class="stamp-box out-rep-stamp-box">
+                                    <img src="" class="stamp-img out-rep-stamp" alt="직인">
+                                </div>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 내용 -->
+                <div class="flex mb-6 text-[11.5pt]">
+                    <div class="w-24 font-bold bg-slate-800 text-white text-center py-1 rounded-l-sm">내 용</div>
+                    <div class="flex-1 font-bold out-title text-slate-800 border-b-2 border-slate-800 pl-4 py-1"></div>
+                </div>
+
+                <!-- 견적 품목 테이블 -->
+                <div class="flex-1">
+                    <table class="q-table">
+                        <thead>
+                            <tr>
+                                <th class="w-[15%]">구 분<br><span class="text-[8pt] font-normal text-slate-500">Item</span></th>
+                                <th class="w-[35%]">적 요<br><span class="text-[8pt] font-normal text-slate-500">Description</span></th>
+                                <th class="w-[15%]">단 가 (원)<br><span class="text-[8pt] font-normal text-slate-500">Unit Cost</span></th>
+                                <th class="w-[10%]">수량<br><span class="text-[8pt] font-normal text-slate-500">Qty</span></th>
+                                <th class="w-[25%]">금 액 (원)<br><span class="text-[8pt] font-normal text-slate-500">Total</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-quotation">
+                            <tr class="item-row">
+                                <td contenteditable="true" class="bg-white font-bold text-slate-700">차량 임차비</td>
+                                <td contenteditable="true" class="bg-white desc-col text-sm text-slate-600">1,200,000원 * 4일</td>
+                                <td contenteditable="true" class="bg-white text-right pr-4 col-unit">1,200,000</td>
+                                <td contenteditable="true" class="bg-white col-qty">4</td>
+                                <td class="bg-white text-right pr-4 relative">
+                                    <span class="font-bold col-sum text-[11pt]">0</span>
+                                    <div class="row-ctrl print-hidden"><button onclick="removeRow(this)" class="text-red-500 hover:bg-red-50 px-1 rounded"><i class="fa-solid fa-minus"></i></button></div>
+                                </td>
+                            </tr>
+                            <tr class="item-row">
+                                <td contenteditable="true" class="bg-white font-bold text-slate-700">통역비</td>
+                                <td contenteditable="true" class="bg-white desc-col text-sm text-slate-600">200,000원 * 3회</td>
+                                <td contenteditable="true" class="bg-white text-right pr-4 col-unit">200,000</td>
+                                <td contenteditable="true" class="bg-white col-qty">3</td>
+                                <td class="bg-white text-right pr-4 relative">
+                                    <span class="font-bold col-sum text-[11pt]">0</span>
+                                    <div class="row-ctrl print-hidden"><button onclick="removeRow(this)" class="text-red-500 hover:bg-red-50 px-1 rounded"><i class="fa-solid fa-minus"></i></button></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- 합계 테이블 -->
+                    <table class="summary-table">
+                        <tr>
+                            <td class="label-col">소 계 (Sub Total)</td>
+                            <td class="text-slate-700"><span id="out-q-subtotal">0</span></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col text-slate-600 font-normal">부 가 세 (VAT)</td>
+                            <td class="text-slate-600"><span id="out-q-vat">포함</span></td>
+                        </tr>
+                        <tr class="grand-total">
+                            <td class="label-col !bg-[#eef2f9] text-blue-900">총 합 계 (Grand Total)</td>
+                            <td class="text-blue-700">₩ <span id="out-q-grandtotal">0</span></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- 하단 입금 정보 및 로고 (겹침 방지 레이아웃 적용) -->
+                <div class="flex justify-between items-end mt-auto pt-10 pb-4">
+                    <div class="w-[70%] border-2 border-slate-800 rounded-lg p-5 bg-white relative">
+                        <div class="absolute -top-3 left-6 bg-white px-2 font-black text-slate-800 text-[11pt]">입금 계좌 정보 (Bank Account)</div>
+                        <div class="space-y-3 text-[10.5pt]">
+                            <div class="flex"><div class="w-32 font-bold pl-2 text-slate-600">은 행 명 (Bank)</div><div class="w-4">:</div><div class="flex-1 font-bold out-rep-bank text-slate-800"></div></div>
+                            <div class="flex"><div class="w-32 font-bold pl-2 text-slate-600">계좌번호 (Account)</div><div class="w-4">:</div><div class="flex-1 font-bold tracking-widest text-lg text-blue-700 out-rep-account"></div></div>
+                            <div class="flex"><div class="w-32 font-bold pl-2 text-slate-600">예 금 주 (Holder)</div><div class="w-4">:</div><div class="flex-1 font-bold out-rep-holder text-slate-800"></div></div>
+                            <div class="flex pt-2 border-t border-slate-200 mt-2"><div class="w-32 font-bold pl-2 text-red-600">입금 기한 (Due)</div><div class="w-4">:</div><div class="flex-1 font-bold text-red-600 out-due-date" contenteditable="true"></div></div>
+                        </div>
+                    </div>
+                    <div class="w-[25%] flex justify-end pb-2">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[120px] opacity-90" alt="Tourmaker Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 2. 청구서 (Invoice) -->
+            <!-- ========================================== -->
+            <div id="page-invoice" class="a4-page hidden">
+                <h1 class="doc-title">청 구 서</h1>
+                <div class="doc-title-eng">INVOICE</div>
+                
+                <!-- 기본 정보 헤더 -->
+                <div class="flex justify-between text-[10pt] mb-8 border-b-2 border-slate-800 pb-4">
+                    <div class="space-y-1">
+                        <div class="flex"><div class="w-32 font-bold text-slate-600">문서번호 (Doc No.)</div><div class="w-4">:</div><div class="font-bold out-doc-no text-slate-800"></div></div>
+                        <div class="flex"><div class="w-32 font-bold text-slate-600">청구일자 (Date)</div><div class="w-4">:</div><div class="font-bold out-date-korean text-slate-800"></div></div>
+                    </div>
+                </div>
+
+                <!-- 수/발신처 정보 -->
+                <div class="flex justify-between mb-10 h-36">
+                    <!-- 수신 -->
+                    <div class="w-[48%] border border-slate-300 rounded-lg p-4 flex flex-col justify-center bg-slate-50 relative">
+                        <div class="absolute -top-3 left-4 bg-slate-50 px-2 font-black text-slate-800 text-[11pt]">수 신 (TO)</div>
+                        <div class="font-bold text-[13pt] text-blue-900 mb-1"><span class="out-school"></span> 귀중</div>
+                        <div class="text-[10pt] text-slate-600 mb-2 out-school-addr leading-tight"></div>
+                        <div class="text-[11pt] font-bold text-slate-800 mt-auto">담당자: <span class="out-school-manager"></span></div>
+                    </div>
+                    
+                    <!-- 발신 -->
+                    <div class="w-[48%] border border-slate-300 rounded-lg p-4 flex flex-col justify-center bg-white relative">
+                        <div class="absolute -top-3 left-4 bg-white px-2 font-black text-slate-800 text-[11pt]">발 신 (FROM)</div>
+                        <div class="font-bold text-[12pt] text-slate-800 mb-1 out-rep-company"></div>
+                        <div class="text-[9pt] text-slate-600 leading-tight mb-1 out-rep-addr"></div>
+                        <div class="text-[9pt] text-slate-600 mb-2 out-rep-phone"></div>
+                        <div class="mt-auto relative">
+                            <span class="font-bold text-[11pt] tracking-widest text-slate-800">대 표 : <span class="out-rep-name"></span></span>
+                            <span class="relative inline-block ml-1">
+                                <span class="px-2 text-slate-600">(인)</span>
+                                <div class="stamp-box out-rep-stamp-box">
+                                    <img src="" class="stamp-img out-rep-stamp" alt="직인">
+                                </div>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 내용 -->
+                <div class="flex mb-10 text-[11.5pt]">
+                    <div class="w-24 font-bold bg-slate-800 text-white text-center py-1 rounded-l-sm">청구내용</div>
+                    <div class="flex-1 font-bold out-title text-slate-800 border-b-2 border-slate-800 pl-4 py-1"></div>
+                </div>
+
+                <!-- 청구 내역 요약 박스 -->
+                <div class="flex-1">
+                    <div class="border border-slate-300 rounded-lg bg-slate-50 p-8 space-y-6 text-[11.5pt]">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                            <div class="w-48 font-bold text-slate-600">최초 계약금액</div>
+                            <div class="flex-1 text-right text-slate-600">금 <span id="out-i-total-kr"></span>원 (₩<span id="out-i-total-num"></span>)</div>
+                        </div>
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                            <div class="w-48 font-bold text-slate-800">최종 정산(계약)금액</div>
+                            <div class="flex-1 text-right font-bold text-slate-800">금 <span id="out-i-settle-kr"></span>원 (₩<span id="out-i-settle-num"></span>)</div>
+                        </div>
+                        <div class="flex items-center justify-between border-b border-slate-300 pb-4">
+                            <div class="w-48 text-blue-700 font-bold">기수령 선금액</div>
+                            <div class="flex-1 text-right text-blue-700">- 금 <span id="out-i-advance-kr"></span>원 (₩<span id="out-i-advance-num"></span>)</div>
+                        </div>
+                        <div class="flex items-center justify-between pt-4 pb-2">
+                            <div class="w-48 font-black text-red-700 text-[13pt]">최종 청구금액</div>
+                            <div class="flex-1 text-right font-black text-red-700 text-[14pt]">금 <span id="out-i-final-kr"></span>원 <span class="tracking-wider ml-2">(₩<span id="out-i-final-num"></span>)</span></div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-center font-bold text-[12pt] mt-12 text-slate-800">위와 같이 청구하오니, 아래 계좌로 입금하여 주시기 바랍니다.</p>
+                </div>
+
+                <!-- 하단 입금 정보 및 로고 (겹침 방지 레이아웃 적용) -->
+                <div class="flex justify-between items-end mt-auto pt-10 pb-4">
+                    <div class="w-[70%] border-2 border-slate-800 rounded-lg p-5 bg-white relative">
+                        <div class="absolute -top-3 left-6 bg-white px-2 font-black text-slate-800 text-[11pt]">입금 계좌 정보 (Bank Account)</div>
+                        <div class="space-y-3 text-[10.5pt]">
+                            <div class="flex"><div class="w-32 font-bold pl-2 text-slate-600">은 행 명 (Bank)</div><div class="w-4">:</div><div class="flex-1 font-bold out-rep-bank text-slate-800"></div></div>
+                            <div class="flex"><div class="w-32 font-bold pl-2 text-slate-600">계좌번호 (Account)</div><div class="w-4">:</div><div class="flex-1 font-bold tracking-widest text-lg text-blue-700 out-rep-account"></div></div>
+                            <div class="flex"><div class="w-32 font-bold pl-2 text-slate-600">예 금 주 (Holder)</div><div class="w-4">:</div><div class="flex-1 font-bold out-rep-holder text-slate-800"></div></div>
+                            <div class="flex pt-2 border-t border-slate-200 mt-2"><div class="w-32 font-bold pl-2 text-red-600">입금 기한 (Due)</div><div class="w-4">:</div><div class="flex-1 font-bold text-red-600 out-due-date" contenteditable="true"></div></div>
+                        </div>
+                    </div>
+                    <div class="w-[25%] flex justify-end pb-2">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[120px] opacity-90" alt="Tourmaker Logo">
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- 대표자 설정 ---
+        // 사용자가 제공한 도장 이미지 URL 적용
+        const reps = {
+            lee: { 
+                name: '이 재 명', 
+                company: '주식회사 투어메이커',
+                stamp: 'https://blogger.googleusercontent.com/img/a/AVvXsEiweUsH71be_Y3skDUBOVzZE0M4HnXmgllJq7c1JgatYy5eROHYdkvE9rMIcqVl0DQ2ypgr8fkZSQclgQjWOk8yZA5wiF326Ldf4KTrfd_YEsD2zZjyqsRLS65uv50SLZcLFqIvwZly49lEN3sheIMq4HV_VWLs1irf4o8g3-ajXCA7CaOlSvpKCT4Q2XA=w200-h200',
+                addr: '강원특별자치도 정선군 정선읍 봉양3길 22-10, 3층',
+                bank: '신협',
+                account: '131-022-382094',
+                holder: '주식회사 투어메이커',
+                phone: 'T. 033-562-2551 / M. 010-9443-7881',
+            },
+            heo: { 
+                name: '허 나 연', 
+                company: '투어메이커',
+                stamp: 'https://blogger.googleusercontent.com/img/a/AVvXsEhaeZ9zwjTzPpbIrnTc1ByxZm6_3p_KEVnbrXQOGpsB5siQDZ-9dbtEceldUpwqPBMvVcRcZiFymvYPqb9CIB-N_G-_jHz0cUHOmDuj_ooirThNY_DlHu3mC6_mXaz7qyx4pjcq721ggwvO4ZuyNIfR5KbKrGEgxJiJ2OCCNohQ1OsW_Fnflub-AoPqz3Y=s16000',
+                addr: '강원도 태백시 광장로 17, 2층',
+                bank: '카카오뱅크',
+                account: '3333-30-1606566',
+                holder: '허나연(투어메이커)',
+                phone: 'T. 033-562-2551 / M. 010-9443-7881',
+            }
+        };
+        
+        let currentMode = 'quotation'; // 'quotation' or 'invoice'
+        let currentRep = 'lee';
+
+        // 숫자 유틸리티
+        function parseNum(str) {
+            if(!str) return 0;
+            return parseInt(str.toString().replace(/[^0-9-]/g, '')) || 0;
+        }
+
+        function formatNum(num) {
+            if(num === 0) return '0';
+            return new Intl.NumberFormat('ko-KR').format(num);
+        }
+
+        function formatInputField(input) {
+            let val = input.value.replace(/[^0-9-]/g, '');
+            if (val === '-') return;
+            if (val) {
+                input.value = new Intl.NumberFormat('ko-KR').format(parseInt(val, 10));
+            } else {
+                input.value = '';
+            }
+        }
+
+        function numberToKorean(number) {
+            if (!number || number === 0) return '영';
+            const numStr = String(number);
+            const hanA = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
+            const danA = ["", "십", "백", "천"];
+            const danG = ["", "만", "억", "조", "경"];
+            let result = "";
+            for (let i = 0; i < numStr.length; i++) {
+                let str = "";
+                const n = parseInt(numStr.charAt(i));
+                const unit = numStr.length - i - 1;
+                if (n > 0) {
+                    str += (n === 1 && unit % 4 !== 0) ? "" : hanA[n];
+                    str += danA[unit % 4];
+                }
+                if (unit % 4 === 0) {
+                    const groupVal = numStr.substring(Math.max(0, i - 3), i + 1);
+                    if (parseInt(groupVal) > 0) str += danG[unit / 4];
+                }
+                result += str;
+            }
+            if (result.startsWith("일만")) result = result.replace("일만", "만");
+            return result;
+        }
+
+        function formatDateKorean(dateStr) {
+            if(!dateStr) return '';
+            const d = new Date(dateStr);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth()+1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}년 ${parseInt(mm)}월 ${parseInt(dd)}일`;
+        }
+
+        // 붙여넣기 시 서식 제거
+        document.addEventListener('paste', function(e) {
+            const target = e.target;
+            if (target.hasAttribute('contenteditable')) {
+                e.preventDefault();
+                let text = (e.clipboardData || window.clipboardData).getData('text');
+                text = text.replace(/[\r\n]+/g, ' ').trim();
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                selection.deleteFromDocument();
+                selection.getRangeAt(0).insertNode(document.createTextNode(text));
+                selection.collapseToEnd();
+                target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+
+        // 탭(모드) 전환
+        function setMode(mode) {
+            currentMode = mode;
+            const btnQ = document.getElementById('btn-quotation');
+            const btnI = document.getElementById('btn-invoice');
+            const setQ = document.getElementById('quotation-settings');
+            const setI = document.getElementById('invoice-settings');
+            const pageQ = document.getElementById('page-quotation');
+            const pageI = document.getElementById('page-invoice');
+
+            const inactiveBtn = 'bg-white text-slate-600 font-bold py-3 rounded-lg border border-slate-300 hover:bg-slate-50 transition text-sm shadow-sm';
+            const activeBtnBase = 'text-white font-bold py-3 rounded-lg border transition shadow-sm text-sm ';
+
+            btnQ.className = mode === 'quotation' ? activeBtnBase + 'bg-blue-600 border-blue-600' : inactiveBtn;
+            btnI.className = mode === 'invoice' ? activeBtnBase + 'bg-emerald-600 border-emerald-600' : inactiveBtn;
+
+            setQ.classList.toggle('hidden', mode !== 'quotation');
+            setI.classList.toggle('hidden', mode !== 'invoice');
+
+            if(mode === 'quotation') {
+                pageQ.classList.remove('hidden');
+                pageQ.classList.add('flex');
+                pageI.classList.add('hidden');
+                pageI.classList.remove('flex');
+                calcTable();
+            } else {
+                pageI.classList.remove('hidden');
+                pageI.classList.add('flex');
+                pageQ.classList.add('hidden');
+                pageQ.classList.remove('flex');
+                updateInvoiceCalc();
+            }
+        }
+
+        // 발신처 설정
+        function setRep(rep) {
+            currentRep = rep;
+            document.getElementById('btn-rep-lee').className = rep === 'lee' ? 'bg-blue-100 text-blue-800 font-bold py-2 rounded border border-blue-300 transition text-xs shadow-inner' : 'bg-white text-slate-600 font-bold py-2 rounded border border-slate-300 hover:bg-slate-50 transition text-xs shadow-sm';
+            document.getElementById('btn-rep-heo').className = rep === 'heo' ? 'bg-blue-100 text-blue-800 font-bold py-2 rounded border border-blue-300 transition text-xs shadow-inner' : 'bg-white text-slate-600 font-bold py-2 rounded border border-slate-300 hover:bg-slate-50 transition text-xs shadow-sm';
+            
+            document.querySelectorAll('.out-rep-company').forEach(el => el.innerText = reps[rep].company);
+            document.querySelectorAll('.out-rep-name').forEach(el => el.innerText = reps[rep].name);
+            document.querySelectorAll('.out-rep-addr').forEach(el => el.innerHTML = reps[rep].addr.replace(', ', '<br>'));
+            document.querySelectorAll('.out-rep-phone').forEach(el => el.innerText = reps[rep].phone);
+            document.querySelectorAll('.out-rep-bank').forEach(el => el.innerText = reps[rep].bank);
+            document.querySelectorAll('.out-rep-account').forEach(el => el.innerText = reps[rep].account);
+            document.querySelectorAll('.out-rep-holder').forEach(el => el.innerText = reps[rep].holder);
+            
+            document.querySelectorAll('.out-rep-stamp').forEach(el => el.src = reps[rep].stamp);
+            document.querySelectorAll('.out-rep-stamp-box').forEach(el => el.setAttribute('data-rep', rep));
+        }
+
+        function toggleStamp() {
+            const isChecked = document.getElementById('toggle-stamp-chk').checked;
+            document.querySelectorAll('.out-rep-stamp-box').forEach(el => {
+                el.style.display = isChecked ? 'inline-flex' : 'none';
+            });
+        }
+
+        // 공통 필드 업데이트
+        function updateDoc() {
+            const docNo = document.getElementById('in-doc-no').value;
+            const dateStr = document.getElementById('in-date').value;
+            const school = document.getElementById('in-school').value;
+            const schoolAddr = document.getElementById('in-school-addr').value;
+            const schoolManager = document.getElementById('in-school-manager').value;
+            const title = document.getElementById('in-title').value;
+            const dueDate = document.getElementById('in-due-date').value;
+
+            document.querySelectorAll('.out-doc-no').forEach(el => el.innerText = docNo);
+            document.querySelectorAll('.out-date-korean').forEach(el => el.innerText = formatDateKorean(dateStr));
+            document.querySelectorAll('.out-school').forEach(el => el.innerText = school);
+            document.querySelectorAll('.out-school-addr').forEach(el => el.innerText = schoolAddr);
+            document.querySelectorAll('.out-school-manager').forEach(el => el.innerText = schoolManager);
+            document.querySelectorAll('.out-title').forEach(el => el.innerText = title);
+            document.querySelectorAll('.out-due-date').forEach(el => el.innerText = dueDate);
+        }
+
+        // [견적서] 테이블 연산
+        function calcTable() {
+            let subTotal = 0;
+            document.querySelectorAll('#tbody-quotation tr.item-row').forEach(row => {
+                let unit = parseNum(row.querySelector('.col-unit').innerText);
+                let qty = parseNum(row.querySelector('.col-qty').innerText);
+                let sum = unit * qty;
+                if(row.querySelector('.col-sum')) row.querySelector('.col-sum').innerText = formatNum(sum);
+                subTotal += sum;
+            });
+
+            const vatType = document.getElementById('in-vat-type').value;
+            let vat = 0;
+            let grandTotal = subTotal;
+            let vatText = "";
+
+            if (vatType === 'included') {
+                vatText = "포함 (Included)";
+                // VAT 포함일 경우 소계=합계
+            } else if (vatType === 'excluded') {
+                vat = Math.floor(subTotal * 0.1);
+                vatText = "₩ " + formatNum(vat);
+                grandTotal = subTotal + vat;
+            } else if (vatType === 'zero') {
+                vatText = "영세율 (Zero-Rated 0%)";
+            }
+
+            document.getElementById('out-q-subtotal').innerText = "₩ " + formatNum(subTotal);
+            document.getElementById('out-q-vat').innerText = vatText;
+            document.getElementById('out-q-grandtotal').innerText = formatNum(grandTotal);
+        }
+
+        // [견적서] 행 추가/삭제
+        function addQuotationRow() {
+            const tbody = document.getElementById('tbody-quotation');
+            const tr = document.createElement('tr');
+            tr.className = "item-row";
+            tr.innerHTML = `
+                <td contenteditable="true" class="bg-white font-bold text-slate-700">항목명</td>
+                <td contenteditable="true" class="bg-white desc-col text-sm text-slate-600">상세 내역 입력</td>
+                <td contenteditable="true" class="bg-white text-right pr-4 col-unit">0</td>
+                <td contenteditable="true" class="bg-white col-qty">1</td>
+                <td class="bg-white text-right pr-4 relative">
+                    <span class="font-bold col-sum text-[11pt]">0</span>
+                    <div class="row-ctrl print-hidden"><button onclick="removeRow(this)" class="text-red-500 hover:bg-red-50 px-1 rounded"><i class="fa-solid fa-minus"></i></button></div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            calcTable();
+        }
+
+        function removeRow(btn) {
+            const tr = btn.closest('tr');
+            const tbody = tr.parentElement;
+            if(tbody.querySelectorAll('tr.item-row').length <= 1) {
+                alert('최소 1개의 항목은 남아있어야 합니다.');
+                return;
+            }
+            tr.remove();
+            calcTable();
+        }
+
+        // [청구서] 연산
+        function updateInvoiceCalc() {
+            const total = parseNum(document.getElementById('in-inv-total').value);
+            const settle = parseNum(document.getElementById('in-inv-settle').value);
+            const advance = parseNum(document.getElementById('in-inv-advance').value);
+            const final = settle - advance;
+
+            // 사이드바 표시
+            document.getElementById('side-final-krw').innerText = formatNum(final);
+
+            // A4 출력부 표시
+            document.getElementById('out-i-total-num').innerText = formatNum(total);
+            document.getElementById('out-i-total-kr').innerText = numberToKorean(total);
+
+            document.getElementById('out-i-settle-num').innerText = formatNum(settle);
+            document.getElementById('out-i-settle-kr').innerText = numberToKorean(settle);
+
+            document.getElementById('out-i-advance-num').innerText = formatNum(advance);
+            document.getElementById('out-i-advance-kr').innerText = numberToKorean(advance);
+
+            document.getElementById('out-i-final-num').innerText = formatNum(final);
+            document.getElementById('out-i-final-kr').innerText = numberToKorean(final);
+        }
+
+        // JSON 파일 백업(다운로드)
+        function exportJSON() {
+            const data = {
+                mode: currentMode,
+                rep: currentRep,
+                showStamp: document.getElementById('toggle-stamp-chk').checked,
+                docNo: document.getElementById('in-doc-no').value,
+                date: document.getElementById('in-date').value,
+                school: document.getElementById('in-school').value,
+                schoolAddr: document.getElementById('in-school-addr').value,
+                schoolManager: document.getElementById('in-school-manager').value,
+                title: document.getElementById('in-title').value,
+                vatType: document.getElementById('in-vat-type').value,
+                invTotal: document.getElementById('in-inv-total').value,
+                invSettle: document.getElementById('in-inv-settle').value,
+                invAdvance: document.getElementById('in-inv-advance').value,
+                dueDate: document.getElementById('in-due-date').value,
+                quotationTable: document.getElementById('tbody-quotation').innerHTML
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `투어메이커_${currentMode === 'quotation' ? '견적서' : '청구서'}_${data.docNo || '백업'}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // JSON 파일 업로드(복구)
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if(data.docNo !== undefined) document.getElementById('in-doc-no').value = data.docNo;
+                    if(data.date !== undefined) document.getElementById('in-date').value = data.date;
+                    if(data.school !== undefined) document.getElementById('in-school').value = data.school;
+                    if(data.schoolAddr !== undefined) document.getElementById('in-school-addr').value = data.schoolAddr;
+                    if(data.schoolManager !== undefined) document.getElementById('in-school-manager').value = data.schoolManager;
+                    if(data.title !== undefined) document.getElementById('in-title').value = data.title;
+                    
+                    if(data.vatType !== undefined) document.getElementById('in-vat-type').value = data.vatType;
+                    if(data.invTotal !== undefined) document.getElementById('in-inv-total').value = data.invTotal;
+                    if(data.invSettle !== undefined) document.getElementById('in-inv-settle').value = data.invSettle;
+                    if(data.invAdvance !== undefined) document.getElementById('in-inv-advance').value = data.invAdvance;
+                    if(data.dueDate !== undefined) document.getElementById('in-due-date').value = data.dueDate;
+                    
+                    if(data.quotationTable !== undefined) document.getElementById('tbody-quotation').innerHTML = data.quotationTable;
+                    
+                    if(data.rep !== undefined) setRep(data.rep);
+                    if(data.showStamp !== undefined) {
+                        document.getElementById('toggle-stamp-chk').checked = data.showStamp;
+                        toggleStamp();
+                    }
+                    if(data.mode !== undefined) setMode(data.mode);
+                    
+                    updateDoc();
+                    calcTable();
+                    updateInvoiceCalc();
+                    
+                    alert('데이터를 성공적으로 불러왔습니다.');
+                } catch (err) {
+                    alert('유효하지 않은 JSON 파일입니다.');
+                }
+                event.target.value = ''; // Reset input
+            };
+            reader.readAsText(file);
+        }
+
+        // 테이블 내용 변경 시 자동 계산 이벤트 리스너
+        document.addEventListener('DOMContentLoaded', () => {
+            const docContainer = document.getElementById('doc-container');
+            if(docContainer) {
+                docContainer.addEventListener('input', function(e) {
+                    if(e.target.hasAttribute('contenteditable')) {
+                        if(currentMode === 'quotation') calcTable();
+                    }
+                }, true);
+
+                docContainer.addEventListener('blur', function(e) {
+                    if(e.target.classList.contains('col-qty') || e.target.classList.contains('col-unit')) {
+                        let text = e.target.innerText.trim();
+                        if(text !== '') {
+                            let val = parseNum(text);
+                            e.target.innerText = val !== 0 ? formatNum(val) : '0';
+                        }
+                        calcTable();
+                    }
+                }, true);
+            }
+
+            // 초기화
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('in-date').value = `${yyyy}-${mm}-${dd}`;
+            
+            setRep('lee'); 
+            setMode('quotation');
+            toggleStamp();
+            updateDoc(); 
+        });
+
+        function resetAll() {
+            if(confirm('모든 입력 내용을 초기화하시겠습니까?')) {
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
