@@ -157,9 +157,10 @@
             .a4-page { 
                 box-shadow: none !important; 
                 margin: 0 !important; 
-                padding: 18mm 15mm !important; 
+                /* 🔥 인쇄 시 위쪽 공백 축소 (18mm -> 10mm) 하여 전체를 위로 올림 */
+                padding: 10mm 15mm 15mm 15mm !important; 
                 width: 210mm !important; 
-                height: 297mm !important; /* 🔥 1장 꽉 차게 높이 강제 고정 */
+                height: 297mm !important; /* 1장 꽉 차게 높이 강제 고정 */
                 page-break-after: always;
                 page-break-inside: avoid;
             }
@@ -167,6 +168,11 @@
             
             /* 에디터 효과 제거 */
             [contenteditable="true"] { border: none !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; }
+
+            /* 🔥 내용(테이블)과 계좌번호 사이 강제 간격 확보 */
+            .print-table-wrap {
+                margin-bottom: 15mm !important; /* 항목이 길어져도 최소 1.5cm 간격 유지 */
+            }
 
             /* Footer 영역 밑으로 강제 밀어내기 (flex-1 여백 확보용) */
             .footer-section { margin-top: auto !important; }
@@ -237,7 +243,9 @@
                 
                 <div class="border-t border-slate-100 pt-4">
                     <label class="block text-xs font-bold text-blue-700 mb-2"><i class="fa-solid fa-user-tie"></i> 수신처 정보</label>
-                    <input type="text" id="in-school" value="행운회" placeholder="수신 기관명" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" oninput="updateDoc()">
+                    <input type="text" id="in-school" value="행운회" placeholder="수신 기관명/단체명" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" oninput="updateDoc()">
+                    <!-- 🔥 추가된 수신처 주소 입력칸 -->
+                    <input type="text" id="in-school-addr" value="" placeholder="수신처 주소 (생략 시 빈칸)" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" oninput="updateDoc()">
                     <input type="text" id="in-school-manager" value="윤순녀" placeholder="수신자 이름 (예: 홍길동)" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" oninput="updateDoc()">
                 </div>
 
@@ -344,8 +352,10 @@
                     <!-- 수신 박스 -->
                     <div class="w-1/2 info-box flex flex-col">
                         <div class="info-box-title">수 신 (TO)</div>
-                        <div class="font-bold text-[13pt] text-blue-700 mt-2"><span class="out-school"></span> 귀중</div>
-                        <div class="mt-auto pt-4 text-[10.5pt] font-bold text-slate-700">
+                        <div class="font-bold text-[13pt] text-blue-700 mt-2 mb-1"><span class="out-school"></span> 귀중</div>
+                        <!-- 🔥 수신처 주소 출력 (투어메이커 주소와 동일한 9.5pt) -->
+                        <div class="text-[9.5pt] text-slate-600 leading-tight out-school-addr"></div>
+                        <div class="mt-auto pt-3 text-[10.5pt] font-bold text-slate-700">
                             담당자: <span class="out-school-manager"></span> 님
                         </div>
                     </div>
@@ -354,6 +364,7 @@
                     <div class="w-1/2 info-box flex flex-col justify-center">
                         <div class="info-box-title">발 신 (FROM)</div>
                         <div class="font-bold text-[11.5pt] text-slate-900 mb-1.5 out-rep-company"></div>
+                        <!-- 투어메이커 주소 -->
                         <div class="text-[9.5pt] text-slate-600 mb-1 leading-tight out-rep-addr"></div>
                         <div class="text-[9.5pt] text-slate-600 mb-3 out-rep-phone"></div>
                         <div class="mt-auto relative">
@@ -374,8 +385,8 @@
                     <div class="flex-1 font-bold text-[11.5pt] text-slate-900 px-4 pb-1 out-title"></div>
                 </div>
 
-                <!-- 테이블 컨테이너 (Flex-1) -->
-                <div class="flex-1 flex flex-col mt-4">
+                <!-- 테이블 컨테이너 (print-table-wrap 클래스 추가로 인쇄시 하단 간격 강제 확보) -->
+                <div class="flex-1 flex flex-col mt-4 print-table-wrap">
                     <table class="q-table">
                         <thead>
                             <tr>
@@ -388,12 +399,22 @@
                         </thead>
                         <tbody id="tbody-quotation">
                             <tr class="item-row">
-                                <td contenteditable="true" class="font-bold text-slate-800">항공</td>
-                                <td contenteditable="true" class="desc-col text-slate-700">항공 좌석 데포짓</td>
-                                <td contenteditable="true" class="text-right pr-4 col-unit">200,000</td>
+                                <td contenteditable="true" class="font-bold text-slate-800">항공료</td>
+                                <td contenteditable="true" class="desc-col text-slate-700">4월발권기준_유류포함</td>
+                                <td contenteditable="true" class="text-right pr-4 col-unit">700,000</td>
                                 <td contenteditable="true" class="col-qty">8</td>
                                 <td class="text-right pr-4 relative font-bold text-slate-800">
-                                    <span class="col-sum">1,600,000</span>
+                                    <span class="col-sum">5,600,000</span>
+                                    <div class="row-ctrl print-hidden"><button onclick="removeRow(this)" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition"><i class="fa-solid fa-minus"></i></button></div>
+                                </td>
+                            </tr>
+                            <tr class="item-row">
+                                <td contenteditable="true" class="font-bold text-slate-800">항공료</td>
+                                <td contenteditable="true" class="desc-col text-slate-700">항공좌석 데포짓 (입금확인)</td>
+                                <td contenteditable="true" class="text-right pr-4 col-unit">-200,000</td>
+                                <td contenteditable="true" class="col-qty">8</td>
+                                <td class="text-right pr-4 relative font-bold text-slate-800">
+                                    <span class="col-sum">-1,600,000</span>
                                     <div class="row-ctrl print-hidden"><button onclick="removeRow(this)" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition"><i class="fa-solid fa-minus"></i></button></div>
                                 </td>
                             </tr>
@@ -415,7 +436,7 @@
                     <table class="summary-table">
                         <tr>
                             <td class="label-col">소 계 (Sub Total)</td>
-                            <td class="text-slate-800 font-bold pr-4">₩ <span id="out-q-subtotal">1,600,000</span></td>
+                            <td class="text-slate-800 font-bold pr-4">₩ <span id="out-q-subtotal">4,000,000</span></td>
                         </tr>
                         <tr>
                             <td class="label-col">부 가 세 (VAT)</td>
@@ -423,7 +444,7 @@
                         </tr>
                         <tr class="grand-total">
                             <td class="label-col tracking-widest text-[#1d4ed8]">총 합 계 (Grand Total)</td>
-                            <td class="pr-4 font-black whitespace-nowrap">₩ <span id="out-q-grandtotal">1,600,000</span></td>
+                            <td class="pr-4 font-black whitespace-nowrap">₩ <span id="out-q-grandtotal">4,000,000</span></td>
                         </tr>
                     </table>
                 </div>
@@ -469,8 +490,10 @@
                     <!-- 수신 박스 -->
                     <div class="w-1/2 info-box flex flex-col">
                         <div class="info-box-title">수 신 (TO)</div>
-                        <div class="font-bold text-[13pt] text-blue-700 mt-2"><span class="out-school"></span> 귀중</div>
-                        <div class="mt-auto pt-4 text-[10.5pt] font-bold text-slate-700">
+                        <div class="font-bold text-[13pt] text-blue-700 mt-2 mb-1"><span class="out-school"></span> 귀중</div>
+                        <!-- 🔥 수신처 주소 출력 -->
+                        <div class="text-[9.5pt] text-slate-600 leading-tight out-school-addr"></div>
+                        <div class="mt-auto pt-3 text-[10.5pt] font-bold text-slate-700">
                             담당자: <span class="out-school-manager"></span> 님
                         </div>
                     </div>
@@ -499,8 +522,8 @@
                     <div class="flex-1 font-bold text-[11.5pt] text-slate-900 px-4 pb-1 out-title"></div>
                 </div>
 
-                <!-- 청구 금액 정산 박스 (Flex-1) -->
-                <div class="flex-1 flex flex-col justify-center pb-10">
+                <!-- 청구 금액 정산 박스 (print-table-wrap 클래스 추가로 인쇄시 하단 간격 강제 확보) -->
+                <div class="flex-1 flex flex-col justify-center pb-10 print-table-wrap">
                     <div class="info-box border-2 border-slate-300 p-8 sm:p-10 text-[12pt] mx-4 mt-4 shadow-sm bg-slate-50/50">
                         <div class="text-center font-bold text-[15pt] mb-10 border-b border-slate-300 pb-4 text-slate-800 tracking-wide">청구 금액 명세</div>
                         
@@ -707,6 +730,7 @@
             const docNo = document.getElementById('in-doc-no').value;
             const dateStr = document.getElementById('in-date').value;
             const school = document.getElementById('in-school').value;
+            const schoolAddr = document.getElementById('in-school-addr').value; // 새로 추가된 부분
             const schoolManager = document.getElementById('in-school-manager').value;
             const title = document.getElementById('in-title').value;
             const dueDate = document.getElementById('in-due-date').value;
@@ -714,6 +738,7 @@
             document.querySelectorAll('.out-doc-no').forEach(el => el.innerText = docNo);
             document.querySelectorAll('.out-date-korean').forEach(el => el.innerText = formatDateKorean(dateStr));
             document.querySelectorAll('.out-school').forEach(el => el.innerText = school);
+            document.querySelectorAll('.out-school-addr').forEach(el => el.innerText = schoolAddr); // 새로 추가된 부분
             document.querySelectorAll('.out-school-manager').forEach(el => el.innerText = schoolManager);
             document.querySelectorAll('.out-title').forEach(el => el.innerText = title);
             document.querySelectorAll('.out-due-date').forEach(el => el.innerText = dueDate);
@@ -808,6 +833,7 @@
                 docNo: document.getElementById('in-doc-no').value,
                 date: document.getElementById('in-date').value,
                 school: document.getElementById('in-school').value,
+                schoolAddr: document.getElementById('in-school-addr').value, // 새로 추가된 부분
                 schoolManager: document.getElementById('in-school-manager').value,
                 title: document.getElementById('in-title').value,
                 vatType: document.getElementById('in-vat-type').value,
@@ -838,6 +864,7 @@
                     if(data.docNo !== undefined) document.getElementById('in-doc-no').value = data.docNo;
                     if(data.date !== undefined) document.getElementById('in-date').value = data.date;
                     if(data.school !== undefined) document.getElementById('in-school').value = data.school;
+                    if(data.schoolAddr !== undefined) document.getElementById('in-school-addr').value = data.schoolAddr; // 새로 추가된 부분
                     if(data.schoolManager !== undefined) document.getElementById('in-school-manager').value = data.schoolManager;
                     if(data.title !== undefined) document.getElementById('in-title').value = data.title;
                     
