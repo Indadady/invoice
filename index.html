@@ -35,7 +35,7 @@
             width: 210mm;
             min-height: 297mm; 
             margin: 2rem auto;
-            padding: 20mm 15mm; /* 인쇄 표준 여백 */
+            padding: 20mm 15mm; 
             box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             position: relative;
             box-sizing: border-box;
@@ -45,7 +45,7 @@
             print-color-adjust: exact !important;
         }
 
-        /* 🔤 타이틀 (첨부 이미지 스타일) */
+        /* 🔤 타이틀 */
         .doc-title { 
             font-size: 28pt; 
             font-weight: 900; 
@@ -146,7 +146,7 @@
         .row-ctrl { position: absolute; right: -30px; top: 50%; transform: translateY(-50%); display: flex; opacity: 0; transition: 0.2s; z-index: 20; }
         tr:hover .row-ctrl { opacity: 1; }
 
-        /* 🖨️ 인쇄 디자인 뷰: 보이는 그대로 출력되면서 1장 레이아웃 꽉 채우기 */
+        /* 🖨️ 인쇄 디자인 뷰: 타이틀 바짝 올리기 & 1장 꽉 채우기 */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
             body { background-color: white !important; margin: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -157,8 +157,8 @@
             .a4-page { 
                 box-shadow: none !important; 
                 margin: 0 !important; 
-                /* 🔥 인쇄 시 위쪽 공백 축소 (18mm -> 10mm) 하여 전체를 위로 올림 */
-                padding: 10mm 15mm 15mm 15mm !important; 
+                /* 🔥 인쇄 시 위쪽 공백을 더 줄여 타이틀을 상단으로 바짝 붙임 (10mm -> 8mm) */
+                padding: 8mm 15mm 15mm 15mm !important; 
                 width: 210mm !important; 
                 height: 297mm !important; /* 1장 꽉 차게 높이 강제 고정 */
                 page-break-after: always;
@@ -169,15 +169,22 @@
             /* 에디터 효과 제거 */
             [contenteditable="true"] { border: none !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; }
 
-            /* 🔥 내용(테이블)과 계좌번호 사이 강제 간격 확보 */
+            /* 테이블 및 청구내역 하단 간격 강제 확보 */
             .print-table-wrap {
-                margin-bottom: 15mm !important; /* 항목이 길어져도 최소 1.5cm 간격 유지 */
+                margin-bottom: 12mm !important; 
             }
             .print-border-black {
                 border-color: #1e293b !important;
             }
+            /* 청구서 컴팩트 모드 (항목이 늘어나도 안전하게) */
+            .invoice-compact-box {
+                padding: 1.25rem !important; /* 20px */
+            }
+            .invoice-compact-title {
+                margin-bottom: 1rem !important; /* 16px */
+            }
 
-            /* Footer 영역 밑으로 강제 밀어내기 (flex-1 여백 확보용) */
+            /* Footer 영역 밑으로 강제 밀어내기 */
             .footer-section { margin-top: auto !important; }
         }
     </style>
@@ -348,27 +355,27 @@
             <!-- ========================================== -->
             <div id="page-quotation" class="a4-page">
                 
-                <!-- 타이틀 영역 -->
-                <div class="text-center pt-2">
+                <!-- 타이틀 영역 (print 시 여백 줄임) -->
+                <div class="text-center print:pt-0">
                     <h1 class="doc-title">견 적 서</h1>
-                    <div class="doc-title-eng">Q U O T A T I O N</div>
+                    <div class="doc-title-eng print:mb-6">Q U O T A T I O N</div>
                 </div>
 
-                <!-- 문서번호/작성일자 영역 (좌측 상단 배치) -->
+                <!-- 문서번호/작성일자 영역 -->
                 <div class="text-[10pt] font-medium text-slate-800 mb-3 space-y-1">
                     <div class="flex"><div class="w-[120px] font-bold text-slate-600">문서번호 (Doc No.)</div><div>:</div><div class="ml-2 font-bold out-doc-no"></div></div>
                     <div class="flex"><div class="w-[120px] font-bold text-slate-600">작성일자 (Date)</div><div>:</div><div class="ml-2 font-bold out-date-korean"></div></div>
                 </div>
 
-                <div class="border-b border-slate-300 mb-4"></div>
+                <div class="border-b border-slate-300 mb-4 print:mb-3"></div>
 
                 <!-- 수/발신처 둥근 박스 -->
-                <div class="flex justify-between gap-4 mb-6">
+                <div class="flex justify-between gap-4 mb-6 print:mb-4">
                     <!-- 수신 박스 -->
                     <div class="w-1/2 info-box flex flex-col">
                         <div class="info-box-title">수 신 (TO)</div>
                         <div class="font-bold text-[13pt] text-blue-700 mt-2 mb-1"><span class="out-school"></span> 귀중</div>
-                        <!-- 수신처 주소 출력 (투어메이커 주소와 동일한 9.5pt) -->
+                        <!-- 수신처 주소 출력 -->
                         <div class="text-[9.5pt] text-slate-600 leading-tight out-school-addr"></div>
                         <div class="mt-auto pt-3 text-[10.5pt] font-bold text-slate-700">
                             담당자: <span class="out-school-manager"></span> 님
@@ -400,7 +407,7 @@
                     <div class="flex-1 font-bold text-[11.5pt] text-slate-900 px-4 pb-1 out-title"></div>
                 </div>
 
-                <!-- 테이블 컨테이너 (print-table-wrap 클래스 추가로 인쇄시 하단 간격 강제 확보) -->
+                <!-- 테이블 컨테이너 -->
                 <div class="flex-1 flex flex-col mt-4 print-table-wrap">
                     <table class="q-table">
                         <thead>
@@ -451,7 +458,6 @@
                     <table class="summary-table">
                         <tr>
                             <td class="label-col">소 계 (Sub Total)</td>
-                            <!-- 💡 숫자 금액을 앞으로, 한글을 괄호 안으로 배치 -->
                             <td class="text-slate-800 pr-4 whitespace-nowrap tracking-wide font-bold">₩ <span id="out-q-subtotal-num">4,000,000</span> <span class="text-[10pt] font-normal text-slate-500 ml-1">(금 <span id="out-q-subtotal-kr">사백만</span> 원)</span></td>
                         </tr>
                         <tr>
@@ -465,8 +471,8 @@
                     </table>
                 </div>
 
-                <!-- Footer: 입금 계좌 정보 (flex 여백으로 최하단 배치) -->
-                <div class="footer-section mt-6 flex justify-between items-end">
+                <!-- Footer: 입금 계좌 정보 -->
+                <div class="footer-section mt-4 flex justify-between items-end">
                     <div class="w-[65%] info-box pb-3 pt-5">
                         <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
                         <div class="text-[10pt] space-y-2 mt-1">
@@ -487,27 +493,26 @@
             <!-- ========================================== -->
             <div id="page-invoice" class="a4-page hidden">
                 
-                <!-- 타이틀 영역 -->
-                <div class="text-center pt-2">
+                <!-- 타이틀 영역 (print 시 여백 줄임) -->
+                <div class="text-center print:pt-0">
                     <h1 class="doc-title">청 구 서</h1>
-                    <div class="doc-title-eng">I N V O I C E</div>
+                    <div class="doc-title-eng print:mb-6">I N V O I C E</div>
                 </div>
 
-                <!-- 문서번호/작성일자 영역 (좌측 상단 배치) -->
+                <!-- 문서번호/작성일자 영역 -->
                 <div class="text-[10pt] font-medium text-slate-800 mb-3 space-y-1">
                     <div class="flex"><div class="w-[120px] font-bold text-slate-600">문서번호 (Doc No.)</div><div>:</div><div class="ml-2 font-bold out-doc-no"></div></div>
                     <div class="flex"><div class="w-[120px] font-bold text-slate-600">청구일자 (Date)</div><div>:</div><div class="ml-2 font-bold out-date-korean"></div></div>
                 </div>
 
-                <div class="border-b border-slate-300 mb-4"></div>
+                <div class="border-b border-slate-300 mb-4 print:mb-3"></div>
 
                 <!-- 수/발신처 둥근 박스 -->
-                <div class="flex justify-between gap-4 mb-6">
+                <div class="flex justify-between gap-4 mb-6 print:mb-4">
                     <!-- 수신 박스 -->
                     <div class="w-1/2 info-box flex flex-col">
                         <div class="info-box-title">수 신 (TO)</div>
                         <div class="font-bold text-[13pt] text-blue-700 mt-2 mb-1"><span class="out-school"></span> 귀중</div>
-                        <!-- 수신처 주소 출력 -->
                         <div class="text-[9.5pt] text-slate-600 leading-tight out-school-addr"></div>
                         <div class="mt-auto pt-3 text-[10.5pt] font-bold text-slate-700">
                             담당자: <span class="out-school-manager"></span> 님
@@ -533,15 +538,15 @@
                 </div>
 
                 <!-- 건명 -->
-                <div class="flex items-end border-b-2 border-slate-800 mb-6 mt-2">
+                <div class="flex items-end border-b-2 border-slate-800 mb-6 print:mb-4 mt-2">
                     <div class="bg-[#1e293b] text-white px-6 py-1.5 font-bold text-[10.5pt]">내 용</div>
                     <div class="flex-1 font-bold text-[11.5pt] text-slate-900 px-4 pb-1 out-title"></div>
                 </div>
 
-                <!-- 청구 금액 정산 박스 (print-table-wrap 클래스 추가로 인쇄시 하단 간격 강제 확보) -->
-                <div class="flex-1 flex flex-col justify-center pb-10 print-table-wrap">
-                    <div class="info-box border-2 border-slate-300 p-8 sm:p-10 text-[12pt] mx-4 mt-4 shadow-sm bg-slate-50/50">
-                        <div class="text-center font-bold text-[15pt] mb-10 border-b border-slate-300 pb-4 text-slate-800 tracking-wide">청구 금액 요약 명세</div>
+                <!-- 🔥 청구 금액 정산 박스 (flex-1 유지, justify-center 제거하여 박스가 위에서부터 자연스럽게 떨어지게 함) -->
+                <div class="flex-1 flex flex-col pt-2 print-table-wrap">
+                    <div class="info-box border-2 border-slate-300 p-8 sm:p-10 invoice-compact-box text-[12pt] mx-4 mt-2 shadow-sm bg-slate-50/50">
+                        <div class="text-center font-bold text-[15pt] mb-8 invoice-compact-title border-b border-slate-300 pb-4 text-slate-800 tracking-wide">청구 금액 요약 명세</div>
                         
                         <div class="space-y-4 max-w-[90%] mx-auto">
                             <!-- 숫자 ₩ 앞으로, 한글 (금 원) 형태 뒤로 수정 -->
@@ -554,21 +559,21 @@
                                 <div class="flex-1 text-right font-black text-slate-900 text-[13pt] tracking-wide whitespace-nowrap">₩ <span id="out-i-settle-num"></span> <span class="text-[11pt] font-bold text-slate-600 ml-1">(금 <span id="out-i-settle-kr"></span> 원)</span></div>
                             </div>
                             
-                            <!-- 🔥 공제 내역 동적 렌더링 컨테이너 -->
+                            <!-- 공제 내역 동적 렌더링 컨테이너 -->
                             <div id="out-inv-deductions-container"></div>
                             
-                            <div class="flex items-center justify-between mt-8 bg-white p-5 rounded border-2 border-slate-800 shadow-sm print-border-black print:bg-gray-100">
+                            <div class="flex items-center justify-between mt-8 print:mt-6 bg-white p-5 rounded border-2 border-slate-800 shadow-sm print-border-black print:bg-gray-100">
                                 <div class="w-48 font-black text-[#1e293b] text-[14pt] whitespace-nowrap">금번 청구금액</div>
                                 <div class="flex-1 text-right font-black text-blue-700 text-[15pt] tracking-wider whitespace-nowrap">₩ <span id="out-i-final-num"></span> <span class="text-[11pt] text-blue-600 font-bold ml-1">(금 <span id="out-i-final-kr" class="underline underline-offset-8 decoration-2"></span> 원)</span></div>
                             </div>
                         </div>
                     </div>
                     
-                    <p class="text-center font-bold text-[12pt] mt-10 text-slate-700">위와 같이 청구하오니, 아래 계좌로 입금하여 주시기 바랍니다.</p>
+                    <p class="text-center font-bold text-[12pt] mt-8 print:mt-6 text-slate-700">위와 같이 청구하오니, 아래 계좌로 입금하여 주시기 바랍니다.</p>
                 </div>
 
                 <!-- Footer: 입금 계좌 정보 -->
-                <div class="footer-section mt-6 flex justify-between items-end">
+                <div class="footer-section mt-4 flex justify-between items-end">
                     <div class="w-[65%] info-box pb-3 pt-5">
                         <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
                         <div class="text-[10pt] space-y-2 mt-1">
@@ -911,7 +916,7 @@
                 vatType: document.getElementById('in-vat-type').value,
                 invTotal: document.getElementById('in-inv-total').value,
                 invSettle: document.getElementById('in-inv-settle').value,
-                invDeductions: invDeductions, // 새롭게 배열 형태로 저장
+                invDeductions: invDeductions, 
                 dueDate: document.getElementById('in-due-date').value,
                 quotationTable: document.getElementById('tbody-quotation').innerHTML
             };
