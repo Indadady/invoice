@@ -83,7 +83,7 @@
             color: #1e293b;
         }
         
-        /* 📊 테이블 스타일 */
+        /* 📊 테이블 스타일 (항목 수용량 증가를 위한 미세조정) */
         .q-table { 
             width: 100%; 
             border-collapse: collapse; 
@@ -94,26 +94,26 @@
             border-bottom: 2px solid #1e293b;
         }
         .q-table th { 
-            padding: 10px 6px; 
+            padding: 8px 4px; /* 여백 축소 */
             border-bottom: 1px solid #cbd5e1; 
             background-color: #f8fafc; 
             font-weight: 700; 
             color: #334155;
         }
         .q-table td { 
-            padding: 12px 6px; 
+            padding: 6px 4px; /* 상하 여백 대폭 축소 */
             border-bottom: 1px solid #f1f5f9; 
-            line-height: 1.5; 
+            line-height: 1.35; /* 줄간격 축소 */
             vertical-align: middle; 
             color: #334155;
         }
-        .q-table td.desc-col { text-align: left; padding-left: 12px; }
+        .q-table td.desc-col { text-align: left; padding-left: 8px; }
 
         /* 합계 영역 */
         .summary-table { width: 100%; border-collapse: collapse; margin-top: -2px; font-size: 10.5pt; }
-        .summary-table td { padding: 10px 16px; border-bottom: 1px solid #e2e8f0; text-align: right; }
+        .summary-table td { padding: 8px 16px; border-bottom: 1px solid #e2e8f0; text-align: right; } /* 여백 축소 */
         .summary-table td.label-col { background-color: #f8fafc; font-weight: 700; text-align: center; width: 65%; border-right: 1px solid #e2e8f0;}
-        .summary-table tr.grand-total td { background-color: #eff6ff; font-weight: 900; font-size: 12pt; border-bottom: 2px solid #1e293b; color: #1d4ed8;}
+        .summary-table tr.grand-total td { background-color: #eff6ff; font-weight: 900; font-size: 12pt; border-bottom: 2px solid #1e293b; color: #1d4ed8; padding: 10px 16px; }
 
         /* 🔖 직인 (스탬프) */
         .stamp-box {
@@ -146,7 +146,7 @@
         .row-ctrl { position: absolute; right: -30px; top: 50%; transform: translateY(-50%); display: flex; opacity: 0; transition: 0.2s; z-index: 20; }
         tr:hover .row-ctrl { opacity: 1; }
 
-        /* 🖨️ 인쇄 디자인 뷰: 타이틀 바짝 올리기 & 1장 꽉 채우기 */
+        /* 🖨️ 인쇄 디자인 뷰: 타이틀 바짝 올리기 & 1장 꽉 채우기 극한 최적화 */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
             body { background-color: white !important; margin: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -157,10 +157,9 @@
             .a4-page { 
                 box-shadow: none !important; 
                 margin: 0 !important; 
-                /* 🔥 인쇄 시 위쪽 공백을 더 줄여 타이틀을 상단으로 바짝 붙임 (10mm -> 8mm) */
-                padding: 8mm 15mm 15mm 15mm !important; 
+                padding: 8mm 15mm 10mm 15mm !important; /* 하단 여백도 축소 */
                 width: 210mm !important; 
-                height: 297mm !important; /* 1장 꽉 차게 높이 강제 고정 */
+                height: 297mm !important; 
                 page-break-after: always;
                 page-break-inside: avoid;
             }
@@ -169,19 +168,30 @@
             /* 에디터 효과 제거 */
             [contenteditable="true"] { border: none !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; }
 
+            /* 인쇄 시 공간 추가 확보 (마진 축소) */
+            .doc-title-eng { margin-bottom: 6mm !important; }
+            .info-box { padding: 12px 14px !important; }
+            .mb-6 { margin-bottom: 1rem !important; }
+
+            /* 인쇄 시 테이블 극강 압축 */
+            .q-table th { padding: 5px 3px !important; font-size: 9.5pt !important; }
+            .q-table td { padding: 4px 3px !important; line-height: 1.25 !important; font-size: 9.5pt !important; }
+            .summary-table td { padding: 6px 12px !important; font-size: 10pt !important; }
+            .summary-table tr.grand-total td { padding: 8px 12px !important; }
+
             /* 테이블 및 청구내역 하단 간격 강제 확보 */
             .print-table-wrap {
-                margin-bottom: 12mm !important; 
+                margin-bottom: 8mm !important; 
             }
             .print-border-black {
                 border-color: #1e293b !important;
             }
-            /* 청구서 컴팩트 모드 (항목이 늘어나도 안전하게) */
+            /* 청구서 컴팩트 모드 */
             .invoice-compact-box {
-                padding: 1.25rem !important; /* 20px */
+                padding: 1.25rem !important;
             }
             .invoice-compact-title {
-                margin-bottom: 1rem !important; /* 16px */
+                margin-bottom: 1rem !important;
             }
 
             /* Footer 영역 밑으로 강제 밀어내기 */
@@ -543,7 +553,7 @@
                     <div class="flex-1 font-bold text-[11.5pt] text-slate-900 px-4 pb-1 out-title"></div>
                 </div>
 
-                <!-- 🔥 청구 금액 정산 박스 (flex-1 유지, justify-center 제거하여 박스가 위에서부터 자연스럽게 떨어지게 함) -->
+                <!-- 🔥 청구 금액 정산 박스 -->
                 <div class="flex-1 flex flex-col pt-2 print-table-wrap">
                     <div class="info-box border-2 border-slate-300 p-8 sm:p-10 invoice-compact-box text-[12pt] mx-4 mt-2 shadow-sm bg-slate-50/50">
                         <div class="text-center font-bold text-[15pt] mb-8 invoice-compact-title border-b border-slate-300 pb-4 text-slate-800 tracking-wide">청구 금액 요약 명세</div>
