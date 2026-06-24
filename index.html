@@ -259,11 +259,12 @@
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <label class="block text-[11px] font-bold text-slate-500">작성일자</label>
-                            <!-- 관공서 제출용 공란 기능 추가 -->
-                            <label class="flex items-center gap-1 cursor-pointer">
-                                <input type="checkbox" id="in-date-blank" onchange="updateDoc()" class="w-3 h-3 text-blue-600 rounded">
-                                <span class="text-[10px] text-slate-500 font-bold">월/일 공란</span>
-                            </label>
+                            <!-- 관공서 제출용 공란 기능 (월/일 선택 공란) -->
+                            <select id="in-date-blank-mode" onchange="updateDoc()" class="border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer">
+                                <option value="">전체 표기</option>
+                                <option value="d">일(日)만 공란</option>
+                                <option value="md">월·일 공란</option>
+                            </select>
                         </div>
                         <input type="date" id="in-date" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" onchange="updateDoc()">
                     </div>
@@ -819,25 +820,25 @@
             return result;
         }
 
-        function formatDateKorean(dateStr, isBlankMonthDay) {
-            let yyyy;
-            if (!dateStr) {
-                yyyy = new Date().getFullYear(); // 날짜 미입력 시 기본 올해 연도
-            } else {
-                yyyy = new Date(dateStr).getFullYear();
+        function formatDateKorean(dateStr, blankMode) {
+            const SP = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'; // 공란 자리
+            const base = dateStr ? new Date(dateStr) : new Date();
+            const yyyy = base.getFullYear();
+            const mm = base.getMonth() + 1;
+            const dd = base.getDate();
+
+            // 월·일 모두 공란
+            if (blankMode === 'md') {
+                return `${yyyy}년 ${SP}월 ${SP}일`;
+            }
+            // 월은 표기, 일만 공란 (관공서 결재일 직접 기입용)
+            if (blankMode === 'd') {
+                return `${yyyy}년 ${mm}월 ${SP}일`;
             }
 
-            // '월/일 공란' 체크 시 넉넉한 공간을 두고 출력
-            if (isBlankMonthDay) {
-                return `${yyyy}년 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;월 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;일`;
-            }
+            if(!dateStr) return ''; // 빈 값이고 공란 옵션도 없으면 빈칸
 
-            if(!dateStr) return ''; // 빈 값이고 체크도 안되어있으면 빈칸
-
-            const d = new Date(dateStr);
-            const mm = String(d.getMonth()+1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            return `${yyyy}년 ${parseInt(mm)}월 ${parseInt(dd)}일`;
+            return `${yyyy}년 ${mm}월 ${dd}일`;
         }
 
         // 붙여넣기 서식 제거
@@ -930,7 +931,7 @@
         function updateDoc() {
             const docNo = document.getElementById('in-doc-no').value;
             const dateStr = document.getElementById('in-date').value;
-            const isDateBlank = document.getElementById('in-date-blank').checked; // 공란 여부 체크
+            const dateBlankMode = document.getElementById('in-date-blank-mode').value; // ''|'d'|'md'
             
             const school = document.getElementById('in-school').value;
             const schoolAddr = document.getElementById('in-school-addr').value; 
@@ -941,7 +942,7 @@
             document.querySelectorAll('.out-doc-no').forEach(el => el.innerText = docNo);
             
             // 공백 문자열 렌더링을 위해 innerHTML 사용
-            document.querySelectorAll('.out-date-korean').forEach(el => el.innerHTML = formatDateKorean(dateStr, isDateBlank));
+            document.querySelectorAll('.out-date-korean').forEach(el => el.innerHTML = formatDateKorean(dateStr, dateBlankMode));
             
             document.querySelectorAll('.out-school').forEach(el => el.innerText = school);
             document.querySelectorAll('.out-school-addr').forEach(el => el.innerText = schoolAddr); 
@@ -1198,7 +1199,7 @@
                 showStamp: document.getElementById('toggle-stamp-chk').checked,
                 docNo: document.getElementById('in-doc-no').value,
                 date: document.getElementById('in-date').value,
-                dateBlank: document.getElementById('in-date-blank').checked, // 공란 여부 백업
+                dateBlankMode: document.getElementById('in-date-blank-mode').value, // ''|'d'|'md'
                 school: document.getElementById('in-school').value,
                 schoolAddr: document.getElementById('in-school-addr').value,
                 schoolManager: document.getElementById('in-school-manager').value,
@@ -1235,7 +1236,12 @@
                     
                     if(data.docNo !== undefined) document.getElementById('in-doc-no').value = data.docNo;
                     if(data.date !== undefined) document.getElementById('in-date').value = data.date;
-                    if(data.dateBlank !== undefined) document.getElementById('in-date-blank').checked = data.dateBlank; // 공란 여부 복구
+                    // 공란 모드 복구 (구버전 백업 호환: dateBlank boolean → 'md')
+                    if(data.dateBlankMode !== undefined) {
+                        document.getElementById('in-date-blank-mode').value = data.dateBlankMode;
+                    } else if(data.dateBlank !== undefined) {
+                        document.getElementById('in-date-blank-mode').value = data.dateBlank ? 'md' : '';
+                    }
                     
                     if(data.school !== undefined) document.getElementById('in-school').value = data.school;
                     if(data.schoolAddr !== undefined) document.getElementById('in-school-addr').value = data.schoolAddr;
