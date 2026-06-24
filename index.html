@@ -12,7 +12,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>투어메이커 Quick Tools - 견적서/청구서</title>
+    <title>투어메이커 Quick Tools - 견적서/청구서/거래명세서</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -209,7 +209,7 @@
                     <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" alt="Tourmaker" class="h-6">
                 </a>
                 <span class="mx-3 text-slate-300 text-xl font-light">|</span>
-                <span class="font-bold text-slate-700 text-lg tracking-wide">Quick Tools: 스마트 견적서·청구서</span>
+                <span class="font-bold text-slate-700 text-lg tracking-wide">Quick Tools: 스마트 견적서·청구서·거래명세서</span>
             </div>
             <div>
                 <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-5 rounded-md shadow-md transition-all flex items-center gap-2">
@@ -228,8 +228,9 @@
             <div>
                 <label class="block text-sm font-bold text-slate-700 mb-2">작성 문서 선택</label>
                 <div class="flex bg-slate-100 p-1 rounded-lg">
-                    <button onclick="setMode('quotation')" id="btn-quotation" class="flex-1 bg-white text-blue-600 font-bold py-2.5 rounded-md shadow transition text-sm">견적서 (Quotation)</button>
-                    <button onclick="setMode('invoice')" id="btn-invoice" class="flex-1 text-slate-500 font-bold py-2.5 rounded-md hover:text-slate-700 transition text-sm">청구서 (Invoice)</button>
+                    <button onclick="setMode('quotation')" id="btn-quotation" class="flex-1 bg-white text-blue-600 font-bold py-2 rounded-md shadow transition text-[13px]">견적서</button>
+                    <button onclick="setMode('invoice')" id="btn-invoice" class="flex-1 text-slate-500 font-bold py-2 rounded-md hover:text-slate-700 transition text-[13px]">청구서</button>
+                    <button onclick="setMode('statement')" id="btn-statement" class="flex-1 text-slate-500 font-bold py-2 rounded-md hover:text-slate-700 transition text-[13px]">거래명세서</button>
                 </div>
             </div>
 
@@ -338,6 +339,29 @@
                             <span class="text-base text-rose-600">₩ <span id="side-final-krw">0</span></span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- 거래명세서 전용 설정 -->
+            <div id="statement-settings" class="space-y-4 border-t border-slate-100 pt-4 hidden">
+                <div class="bg-cyan-50/50 p-4 rounded-xl border border-cyan-100">
+                    <label class="block text-xs font-bold text-cyan-800 mb-3"><i class="fa-solid fa-receipt"></i> 거래명세 산출 설정</label>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-slate-600">부가세 (VAT) 처리</span>
+                        <select id="in-st-vat-type" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white font-medium" onchange="calcStatement()">
+                            <option value="item" selected>품목에 포함 (직접 입력)</option>
+                            <option value="excluded">별도 (공급가액 10%)</option>
+                            <option value="zero">없음 (면세/0%)</option>
+                        </select>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 mb-3">
+                        <input type="checkbox" id="in-st-round" onchange="calcStatement()" class="w-3.5 h-3.5 text-cyan-600 rounded accent-cyan-600">
+                        <span class="text-[11px] font-bold text-slate-600">만원 미만 절사 (합계금액)</span>
+                    </label>
+                    <button onclick="addStatementRow()" class="w-full bg-white border border-cyan-300 text-cyan-700 font-bold py-2.5 rounded-md text-xs hover:bg-cyan-50 transition shadow-sm flex justify-center items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> 거래 품목 추가
+                    </button>
+                    <p class="text-[10px] text-slate-500 mt-3 text-center leading-relaxed"><i class="fa-solid fa-circle-info text-cyan-400"></i> 품명·규격·수량·단가는 우측 화면에서<br>직접 클릭하여 수정하세요.</p>
                 </div>
             </div>
 
@@ -606,6 +630,111 @@
                 </div>
             </div>
 
+            <!-- ========================================== -->
+            <!-- 3. 거래명세서 (Statement) -->
+            <!-- ========================================== -->
+            <div id="page-statement" class="a4-page hidden">
+
+                <!-- 타이틀 영역 -->
+                <div class="text-center print:pt-0">
+                    <h1 class="doc-title">거 래 명 세 서</h1>
+                    <div class="doc-title-eng print:mb-6">T R A N S A C T I O N &nbsp; S T A T E M E N T</div>
+                </div>
+
+                <!-- 문서번호/발행일 영역 -->
+                <div class="text-[10pt] font-medium text-slate-800 mb-3 space-y-1">
+                    <div class="flex"><div class="w-[120px] font-bold text-slate-600">문서번호 (Doc No.)</div><div>:</div><div class="ml-2 font-bold out-doc-no"></div></div>
+                    <div class="flex"><div class="w-[120px] font-bold text-slate-600">발행일자 (Date)</div><div>:</div><div class="ml-2 font-bold out-date-korean"></div></div>
+                </div>
+
+                <div class="border-b border-slate-300 mb-4 print:mb-3"></div>
+
+                <!-- 공급받는자 / 공급자 박스 -->
+                <div class="flex justify-between gap-4 mb-6 print:mb-4">
+                    <!-- 공급받는자 -->
+                    <div class="w-[42%] info-box flex flex-col">
+                        <div class="info-box-title">공 급 받 는 자 (수신)</div>
+                        <div class="font-bold text-[13pt] text-cyan-700 mt-2 mb-1"><span class="out-school"></span> 귀중</div>
+                        <div class="text-[9.5pt] text-slate-600 leading-tight out-school-addr"></div>
+                        <div class="mt-auto pt-3 text-[10.5pt] font-bold text-slate-700">
+                            인수담당자: <span class="out-school-manager"></span> 님
+                        </div>
+                    </div>
+
+                    <!-- 공급자 -->
+                    <div class="w-[58%] info-box">
+                        <div class="info-box-title">공 급 자 (발신)</div>
+                        <div class="text-[9.5pt] space-y-1 mt-2">
+                            <div class="flex"><div class="w-[64px] font-bold text-slate-500 shrink-0">등록번호</div><div class="font-black text-slate-900 tracking-wide out-rep-bizno"></div></div>
+                            <div class="flex items-center"><div class="w-[64px] font-bold text-slate-500 shrink-0">상 호</div><div class="font-bold text-slate-800 out-rep-company"></div><div class="ml-auto relative pr-1"><span class="font-bold text-slate-700">대표 <span class="out-rep-name"></span></span><span class="px-1 text-slate-800 font-bold">(인)</span><div class="stamp-box out-rep-stamp-box" style="right:-18px; top:-20px;"><img src="" class="stamp-img out-rep-stamp" alt="직인"></div></div></div>
+                            <div class="flex"><div class="w-[64px] font-bold text-slate-500 shrink-0">주 소</div><div class="text-slate-700 leading-tight out-rep-addr"></div></div>
+                            <div class="flex"><div class="w-[64px] font-bold text-slate-500 shrink-0">업태/종목</div><div class="text-slate-700"><span class="out-rep-biztype"></span> / <span class="out-rep-bizitem"></span></div></div>
+                            <div class="flex"><div class="w-[64px] font-bold text-slate-500 shrink-0">전화/메일</div><div class="text-slate-700 out-rep-phonemail"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 건명 -->
+                <div class="flex items-end border-b-2 border-slate-800 mb-2 mt-2">
+                    <div class="bg-[#1e293b] text-white px-6 py-1.5 font-bold text-[10.5pt]">거래내용</div>
+                    <div class="flex-1 font-bold text-[11.5pt] text-slate-900 px-4 pb-1 out-title"></div>
+                </div>
+
+                <!-- 거래 품목 테이블 -->
+                <div class="flex-1 flex flex-col mt-4 print-table-wrap">
+                    <table class="q-table">
+                        <thead>
+                            <tr>
+                                <th class="w-[7%]">No</th>
+                                <th class="w-[28%]">품 명<br><span class="text-[7.5pt] font-normal text-slate-500">Item</span></th>
+                                <th class="w-[15%]">규 격<br><span class="text-[7.5pt] font-normal text-slate-500">Spec</span></th>
+                                <th class="w-[10%]">수 량<br><span class="text-[7.5pt] font-normal text-slate-500">Qty</span></th>
+                                <th class="w-[18%]">단 가 (원)<br><span class="text-[7.5pt] font-normal text-slate-500">Unit</span></th>
+                                <th class="w-[22%]">공급가액 (원)<br><span class="text-[7.5pt] font-normal text-slate-500">Amount</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-statement"></tbody>
+                    </table>
+
+                    <!-- 합계 영역 -->
+                    <table class="summary-table">
+                        <tr>
+                            <td class="label-col">공 급 가 액 합 계 (Supply)</td>
+                            <td class="text-slate-800 pr-4 whitespace-nowrap tracking-wide font-bold">₩ <span id="out-st-subtotal-num">0</span> <span class="text-[10pt] font-normal text-slate-500 ml-1">(금 <span id="out-st-subtotal-kr">영</span> 원)</span></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">부 가 세 (VAT)</td>
+                            <td class="text-slate-600 pr-4 whitespace-nowrap font-bold"><span id="out-st-vat">상기 품목에 포함</span></td>
+                        </tr>
+                        <tr class="grand-total">
+                            <td class="label-col tracking-widest text-[#1d4ed8]">합 계 금 액 (Total)</td>
+                            <td class="pr-4 whitespace-nowrap tracking-wider font-black text-[#1d4ed8]">₩ <span id="out-st-grandtotal-num">0</span> <span class="text-[11pt] font-bold text-[#1d4ed8] ml-1">(금 <span id="out-st-grandtotal-kr">영</span> 원)</span></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Footer: 기타사항 + 계좌 + 로고 -->
+                <div class="footer-section mt-4">
+                    <div class="info-box pb-3 pt-5 mb-3">
+                        <div class="info-box-title">기타 사항 (Note)</div>
+                        <div class="text-[9.5pt] text-slate-700 leading-relaxed out-st-note" contenteditable="true">상기와 같이 거래내역을 명세하여 통지합니다. 본 위탁용역의 항공·숙박·현지경비 등은 제3자 거래를 통한 수탁 대행 항목이며, 자체수익(운영관리비 등)에 대해서만 세금계산서를 발행합니다.</div>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div class="w-[65%] info-box pb-3 pt-5">
+                            <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
+                            <div class="text-[10pt] space-y-2 mt-1">
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700 leading-tight">계좌번호<br><span class="font-normal text-[8pt] text-slate-500">(Account)</span></div><div class="w-4 text-slate-800 pt-1">:</div><div class="flex-1 font-black text-[13pt] text-cyan-700 tracking-wider pt-1 out-rep-account"></div></div>
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700">예 금 주 (Holder)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-holder"></div></div>
+                            </div>
+                        </div>
+                        <div class="w-[30%] flex flex-col justify-end items-end pb-1">
+                            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[130px] opacity-90 mix-blend-multiply" alt="Tourmaker Logo">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -621,6 +750,10 @@
                 account: '131-022-382094',
                 holder: '주식회사 투어메이커',
                 phone: 'T. 033-562-2551 / M. 010-9443-7881',
+                bizNo: '473-81-03183',
+                bizType: '서비스업',
+                bizItem: '종합여행업',
+                phonemail: 'T. 033-562-2551 / jmlojm@nate.com',
             },
             heo: { 
                 name: '허 나 연', 
@@ -631,6 +764,10 @@
                 account: '3333-30-1606566',
                 holder: '허나연(투어메이커)',
                 phone: 'T. 033-562-2551 / M. 010-9443-7881',
+                bizNo: '',
+                bizType: '서비스업',
+                bizItem: '종합여행업',
+                phonemail: 'T. 033-562-2551 / jmlojm@nate.com',
             }
         };
         
@@ -723,29 +860,37 @@
             currentMode = mode;
             const btnQ = document.getElementById('btn-quotation');
             const btnI = document.getElementById('btn-invoice');
+            const btnS = document.getElementById('btn-statement');
             const setQ = document.getElementById('quotation-settings');
             const setI = document.getElementById('invoice-settings');
+            const setS = document.getElementById('statement-settings');
             const pageQ = document.getElementById('page-quotation');
             const pageI = document.getElementById('page-invoice');
+            const pageS = document.getElementById('page-statement');
 
-            const inactiveBtn = 'flex-1 text-slate-500 font-bold py-2.5 rounded-md hover:text-slate-700 transition text-sm';
-            const activeBtnBaseQ = 'flex-1 bg-white text-blue-600 font-bold py-2.5 rounded-md shadow transition text-sm';
-            const activeBtnBaseI = 'flex-1 bg-white text-rose-600 font-bold py-2.5 rounded-md shadow transition text-sm';
+            const inactiveBtn = 'flex-1 text-slate-500 font-bold py-2 rounded-md hover:text-slate-700 transition text-[13px]';
+            const activeBtnBaseQ = 'flex-1 bg-white text-blue-600 font-bold py-2 rounded-md shadow transition text-[13px]';
+            const activeBtnBaseI = 'flex-1 bg-white text-rose-600 font-bold py-2 rounded-md shadow transition text-[13px]';
+            const activeBtnBaseS = 'flex-1 bg-white text-cyan-600 font-bold py-2 rounded-md shadow transition text-[13px]';
 
             btnQ.className = mode === 'quotation' ? activeBtnBaseQ : inactiveBtn;
             btnI.className = mode === 'invoice' ? activeBtnBaseI : inactiveBtn;
+            btnS.className = mode === 'statement' ? activeBtnBaseS : inactiveBtn;
 
             setQ.classList.toggle('hidden', mode !== 'quotation');
             setI.classList.toggle('hidden', mode !== 'invoice');
+            setS.classList.toggle('hidden', mode !== 'statement');
+
+            pageQ.classList.toggle('hidden', mode !== 'quotation');
+            pageI.classList.toggle('hidden', mode !== 'invoice');
+            pageS.classList.toggle('hidden', mode !== 'statement');
 
             if(mode === 'quotation') {
-                pageQ.classList.remove('hidden');
-                pageI.classList.add('hidden');
                 calcTable();
-            } else {
-                pageI.classList.remove('hidden');
-                pageQ.classList.add('hidden');
+            } else if(mode === 'invoice') {
                 updateInvoiceCalc();
+            } else {
+                calcStatement();
             }
         }
 
@@ -764,6 +909,12 @@
             document.querySelectorAll('.out-rep-bank').forEach(el => el.innerText = reps[rep].bank);
             document.querySelectorAll('.out-rep-account').forEach(el => el.innerText = reps[rep].account);
             document.querySelectorAll('.out-rep-holder').forEach(el => el.innerText = reps[rep].holder);
+
+            // 거래명세서 전용 공급자 정보
+            document.querySelectorAll('.out-rep-bizno').forEach(el => el.innerText = reps[rep].bizNo || '');
+            document.querySelectorAll('.out-rep-biztype').forEach(el => el.innerText = reps[rep].bizType || '');
+            document.querySelectorAll('.out-rep-bizitem').forEach(el => el.innerText = reps[rep].bizItem || '');
+            document.querySelectorAll('.out-rep-phonemail').forEach(el => el.innerText = reps[rep].phonemail || '');
             
             document.querySelectorAll('.out-rep-stamp').forEach(el => el.src = reps[rep].stamp);
             document.querySelectorAll('.out-rep-stamp-box').forEach(el => el.setAttribute('data-rep', rep));
@@ -864,6 +1015,110 @@
             calcTable();
         }
 
+        // ================= 거래명세서 연산 =================
+        // 기본 품목 (현재 행사 데이터 - 필요 시 우측에서 수정)
+        const STATEMENT_DEFAULTS = [
+            ['항공료', '왕복/유류포함', 1, 2960000],
+            ['숙박료', '2박', 1, 2420000],
+            ['식대료', '전일정', 1, 2000000],
+            ['현지차량료', '전용버스', 1, 1950000],
+            ['가이드비', '전일정', 1, 600000],
+            ['주차료', '-', 1, 10000],
+            ['관광지 입장료', '-', 1, 1136000],
+            ['여행자보험', '전원', 1, 80000],
+            ['운영관리비', '-', 1, 1760000],
+            ['부가세', '운영관리비 10%', 1, 1291600],
+        ];
+
+        function statementRowHtml(no, name, spec, qty, unit) {
+            return `
+                <td contenteditable="true" class="font-bold text-slate-700 col-st-no">${no}</td>
+                <td contenteditable="true" class="desc-col font-bold text-slate-800 col-st-name">${name}</td>
+                <td contenteditable="true" class="text-slate-600 col-st-spec">${spec}</td>
+                <td contenteditable="true" class="col-st-qty">${qty}</td>
+                <td contenteditable="true" class="text-right pr-4 col-st-unit">${unit}</td>
+                <td class="text-right pr-4 relative font-bold text-slate-800">
+                    <span class="col-st-sum">0</span>
+                    <div class="row-ctrl print-hidden"><button onclick="removeStatementRow(this)" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition"><i class="fa-solid fa-minus"></i></button></div>
+                </td>`;
+        }
+
+        function renderStatementDefaults() {
+            const tbody = document.getElementById('tbody-statement');
+            tbody.innerHTML = '';
+            STATEMENT_DEFAULTS.forEach((r, i) => {
+                const tr = document.createElement('tr');
+                tr.className = 'item-row-st';
+                tr.innerHTML = statementRowHtml(i + 1, r[0], r[1], r[2], formatNum(r[3]));
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addStatementRow() {
+            const tbody = document.getElementById('tbody-statement');
+            const no = tbody.querySelectorAll('tr.item-row-st').length + 1;
+            const tr = document.createElement('tr');
+            tr.className = 'item-row-st';
+            tr.innerHTML = statementRowHtml(no, '품목명', '-', 1, 0);
+            tbody.appendChild(tr);
+            calcStatement();
+        }
+
+        function removeStatementRow(btn) {
+            const tr = btn.closest('tr');
+            const tbody = tr.parentElement;
+            if(tbody.querySelectorAll('tr.item-row-st').length <= 1) {
+                alert('최소 1개의 항목은 남아있어야 합니다.');
+                return;
+            }
+            tr.remove();
+            renumberStatement();
+            calcStatement();
+        }
+
+        function renumberStatement() {
+            document.querySelectorAll('#tbody-statement tr.item-row-st').forEach((row, i) => {
+                const noCell = row.querySelector('.col-st-no');
+                if(noCell) noCell.innerText = i + 1;
+            });
+        }
+
+        function calcStatement() {
+            let subTotal = 0;
+            document.querySelectorAll('#tbody-statement tr.item-row-st').forEach(row => {
+                let unit = parseNum(row.querySelector('.col-st-unit').innerText);
+                let qty = parseNum(row.querySelector('.col-st-qty').innerText);
+                let sum = unit * qty;
+                const sumEl = row.querySelector('.col-st-sum');
+                if(sumEl) sumEl.innerText = formatNum(sum);
+                subTotal += sum;
+            });
+
+            const vatType = document.getElementById('in-st-vat-type').value;
+            let vatText = '';
+            let grandTotal = subTotal;
+
+            if (vatType === 'item') {
+                vatText = '상기 품목에 포함';
+            } else if (vatType === 'excluded') {
+                const vat = Math.floor(subTotal * 0.1);
+                vatText = '₩ ' + formatNum(vat) + ' (공급가액의 10%)';
+                grandTotal = subTotal + vat;
+            } else if (vatType === 'zero') {
+                vatText = '면세 (0%)';
+            }
+
+            if (document.getElementById('in-st-round').checked) {
+                grandTotal = Math.floor(grandTotal / 10000) * 10000;
+            }
+
+            document.getElementById('out-st-subtotal-num').innerText = formatNum(subTotal);
+            document.getElementById('out-st-subtotal-kr').innerText = numberToKorean(subTotal);
+            document.getElementById('out-st-vat').innerText = vatText;
+            document.getElementById('out-st-grandtotal-num').innerText = formatNum(grandTotal);
+            document.getElementById('out-st-grandtotal-kr').innerText = numberToKorean(grandTotal);
+        }
+
         // ================= 청구서 연산 (기수령 다중 항목 처리) =================
         function updateInvoiceCalc() {
             const total = parseNum(document.getElementById('in-inv-total').value);
@@ -953,14 +1208,19 @@
                 invSettle: document.getElementById('in-inv-settle').value,
                 invDeductions: invDeductions, 
                 dueDate: document.getElementById('in-due-date').value,
-                quotationTable: document.getElementById('tbody-quotation').innerHTML
+                quotationTable: document.getElementById('tbody-quotation').innerHTML,
+                stVatType: document.getElementById('in-st-vat-type').value,
+                stRound: document.getElementById('in-st-round').checked,
+                statementTable: document.getElementById('tbody-statement').innerHTML,
+                stNote: document.querySelector('.out-st-note') ? document.querySelector('.out-st-note').innerHTML : ''
             };
 
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `투어메이커_${currentMode === 'quotation' ? '견적서' : '청구서'}_${data.docNo || '백업'}.json`;
+            const modeLabel = currentMode === 'quotation' ? '견적서' : (currentMode === 'invoice' ? '청구서' : '거래명세서');
+            a.download = `투어메이커_${modeLabel}_${data.docNo || '백업'}.json`;
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -1004,6 +1264,11 @@
                     }
                     
                     if(data.quotationTable !== undefined) document.getElementById('tbody-quotation').innerHTML = data.quotationTable;
+
+                    if(data.stVatType !== undefined) document.getElementById('in-st-vat-type').value = data.stVatType;
+                    if(data.stRound !== undefined) document.getElementById('in-st-round').checked = data.stRound;
+                    if(data.statementTable !== undefined) document.getElementById('tbody-statement').innerHTML = data.statementTable;
+                    if(data.stNote !== undefined && document.querySelector('.out-st-note')) document.querySelector('.out-st-note').innerHTML = data.stNote;
                     
                     if(data.rep !== undefined) setRep(data.rep);
                     if(data.showStamp !== undefined) {
@@ -1015,6 +1280,7 @@
                     updateDoc();
                     calcTable();
                     updateInvoiceCalc();
+                    calcStatement();
                     
                     alert('데이터를 성공적으로 불러왔습니다.');
                 } catch (err) {
@@ -1031,6 +1297,7 @@
                 docContainer.addEventListener('input', function(e) {
                     if(e.target.hasAttribute('contenteditable')) {
                         if(currentMode === 'quotation') calcTable();
+                        else if(currentMode === 'statement') calcStatement();
                     }
                 }, true);
 
@@ -1043,8 +1310,18 @@
                         }
                         calcTable();
                     }
+                    if(e.target.classList.contains('col-st-qty') || e.target.classList.contains('col-st-unit')) {
+                        let text = e.target.innerText.trim();
+                        if(text !== '') {
+                            let val = parseNum(text);
+                            e.target.innerText = val !== 0 ? formatNum(val) : '0';
+                        }
+                        calcStatement();
+                    }
                 }, true);
             }
+
+            renderStatementDefaults();
 
             const today = new Date();
             const yyyy = today.getFullYear();
