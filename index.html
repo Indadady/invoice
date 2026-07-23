@@ -371,6 +371,11 @@
                 <input type="text" id="in-due-date" placeholder="예: 빈칸으로 둘 시 삭제됨" value="" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" oninput="updateDoc()">
             </div>
 
+            <div class="pt-2">
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">기타특이사항 <span class="font-normal text-slate-400">(작성 시에만 표시)</span></label>
+                <textarea id="in-remarks" rows="3" placeholder="예: 항공료는 발권 시점 유가·환율에 따라 변동될 수 있습니다.&#10;비워두면 견적서/청구서에 노출되지 않습니다." class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-y leading-relaxed" oninput="updateDoc()"></textarea>
+            </div>
+
             <!-- JSON 데이터 백업 -->
             <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
                 <label class="block text-[11px] font-bold text-slate-500 mb-2">데이터 백업/복구</label>
@@ -513,6 +518,12 @@
                     </table>
                 </div>
 
+                <!-- 기타특이사항 (작성 시에만 표시) -->
+                <div class="out-remarks-box info-box pb-3 pt-5 mt-4" style="display:none;">
+                    <div class="info-box-title">기타특이사항 (Remarks)</div>
+                    <div class="text-[9.5pt] text-slate-700 leading-relaxed whitespace-pre-wrap out-remarks"></div>
+                </div>
+
                 <!-- Footer: 입금 계좌 정보 -->
                 <div class="footer-section mt-4 flex justify-between items-end">
                     <div class="w-[65%] info-box pb-3 pt-5">
@@ -612,6 +623,12 @@
                     </div>
                     
                     <p class="text-center font-bold text-[12pt] mt-8 print:mt-6 text-slate-700">위와 같이 청구하오니, 아래 계좌로 입금하여 주시기 바랍니다.</p>
+                </div>
+
+                <!-- 기타특이사항 (작성 시에만 표시) -->
+                <div class="out-remarks-box info-box pb-3 pt-5 mt-4" style="display:none;">
+                    <div class="info-box-title">기타특이사항 (Remarks)</div>
+                    <div class="text-[9.5pt] text-slate-700 leading-relaxed whitespace-pre-wrap out-remarks"></div>
                 </div>
 
                 <!-- Footer: 입금 계좌 정보 -->
@@ -938,6 +955,7 @@
             const schoolManager = document.getElementById('in-school-manager').value;
             const title = document.getElementById('in-title').value;
             const dueDate = document.getElementById('in-due-date').value;
+            const remarks = document.getElementById('in-remarks').value;
 
             document.querySelectorAll('.out-doc-no').forEach(el => el.innerText = docNo);
             
@@ -949,6 +967,13 @@
             document.querySelectorAll('.out-school-manager').forEach(el => el.innerText = schoolManager);
             document.querySelectorAll('.out-title').forEach(el => el.innerText = title);
             document.querySelectorAll('.out-due-date').forEach(el => el.innerText = dueDate);
+
+            // 기타특이사항: 내용이 있을 때만 견적서/청구서에 노출
+            const hasRemarks = remarks.trim().length > 0;
+            document.querySelectorAll('.out-remarks').forEach(el => el.innerText = remarks);
+            document.querySelectorAll('.out-remarks-box').forEach(el => {
+                el.style.display = hasRemarks ? 'block' : 'none';
+            });
         }
 
         // ================= 견적서 연산 =================
@@ -1209,6 +1234,7 @@
                 invSettle: document.getElementById('in-inv-settle').value,
                 invDeductions: invDeductions, 
                 dueDate: document.getElementById('in-due-date').value,
+                remarks: document.getElementById('in-remarks').value,
                 quotationTable: document.getElementById('tbody-quotation').innerHTML,
                 stVatType: document.getElementById('in-st-vat-type').value,
                 stRound: document.getElementById('in-st-round').checked,
@@ -1252,6 +1278,7 @@
                     if(data.invTotal !== undefined) document.getElementById('in-inv-total').value = data.invTotal;
                     if(data.invSettle !== undefined) document.getElementById('in-inv-settle').value = data.invSettle;
                     if(data.dueDate !== undefined) document.getElementById('in-due-date').value = data.dueDate;
+                    if(data.remarks !== undefined) document.getElementById('in-remarks').value = data.remarks;
                     
                     // 기수령 항목 복원 처리
                     if(data.invDeductions !== undefined) {
