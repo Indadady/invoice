@@ -288,7 +288,7 @@
             <div id="quotation-settings" class="space-y-4 border-t border-slate-100 pt-4">
                 <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                     <label class="block text-xs font-bold text-blue-800 mb-3"><i class="fa-solid fa-calculator"></i> 견적 산출 설정</label>
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-3">
                         <span class="text-xs font-bold text-slate-600">부가세 (VAT) 처리</span>
                         <select id="in-vat-type" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium" onchange="calcTable()">
                             <option value="included">포함 (Included)</option>
@@ -296,6 +296,10 @@
                             <option value="zero" selected>영세율 (0%)</option>
                         </select>
                     </div>
+                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 mb-3" title="부가세·합계에서 원·십원 단위를 버립니다. (예: 1,234,567 → 1,234,500)">
+                        <input type="checkbox" id="in-q-round-100" onchange="calcTable()" class="w-3.5 h-3.5 text-blue-600 rounded accent-blue-600">
+                        <span class="text-[11px] font-bold text-slate-600">백원 미만 절사 (부가세·합계)</span>
+                    </label>
                     <button onclick="addQuotationRow()" class="w-full bg-white border border-blue-300 text-blue-700 font-bold py-2.5 rounded-md text-xs hover:bg-blue-50 transition shadow-sm flex justify-center items-center gap-1.5">
                         <i class="fa-solid fa-plus"></i> 견적 품목 추가
                     </button>
@@ -355,6 +359,10 @@
                             <option value="zero">없음 (면세/0%)</option>
                         </select>
                     </div>
+                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 mb-2">
+                        <input type="checkbox" id="in-st-round-100" onchange="calcStatement()" class="w-3.5 h-3.5 text-cyan-600 rounded accent-cyan-600">
+                        <span class="text-[11px] font-bold text-slate-600">백원 미만 절사 (부가세·합계)</span>
+                    </label>
                     <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 mb-3">
                         <input type="checkbox" id="in-st-round" onchange="calcStatement()" class="w-3.5 h-3.5 text-cyan-600 rounded accent-cyan-600">
                         <span class="text-[11px] font-bold text-slate-600">만원 미만 절사 (합계금액)</span>
@@ -990,6 +998,13 @@
             });
         }
 
+        /** 금액 절사 (양수 기준 내림) */
+        function floorToUnit(amount, unit) {
+            if (!unit || unit <= 1) return amount;
+            const sign = amount < 0 ? -1 : 1;
+            return sign * Math.floor(Math.abs(amount) / unit) * unit;
+        }
+
         // ================= 견적서 연산 =================
         function calcTable() {
             let subTotal = 0;
@@ -1002,18 +1017,22 @@
             });
 
             const vatType = document.getElementById('in-vat-type').value;
+            const round100 = document.getElementById('in-q-round-100').checked;
             let vat = 0;
             let grandTotal = subTotal;
             let vatText = "";
 
             if (vatType === 'included') {
                 vatText = "포함 (Included)";
+                if (round100) grandTotal = floorToUnit(grandTotal, 100);
             } else if (vatType === 'excluded') {
                 vat = Math.floor(subTotal * 0.1);
-                vatText = "₩ " + formatNum(vat);
+                if (round100) vat = floorToUnit(vat, 100);
+                vatText = "₩ " + formatNum(vat) + (round100 ? " (백원미만절사)" : "");
                 grandTotal = subTotal + vat;
             } else if (vatType === 'zero') {
                 vatText = "영세율 (0%)";
+                if (round100) grandTotal = floorToUnit(grandTotal, 100);
             }
 
             // 견적서 합계 (숫자 앞, 한글 뒤)
@@ -1135,21 +1154,25 @@
             });
 
             const vatType = document.getElementById('in-st-vat-type').value;
+            const round100 = document.getElementById('in-st-round-100').checked;
             let vatText = '';
             let grandTotal = subTotal;
 
             if (vatType === 'item') {
                 vatText = '상기 품목에 포함';
+                if (round100) grandTotal = floorToUnit(grandTotal, 100);
             } else if (vatType === 'excluded') {
-                const vat = Math.floor(subTotal * 0.1);
-                vatText = '₩ ' + formatNum(vat) + ' (공급가액의 10%)';
+                let vat = Math.floor(subTotal * 0.1);
+                if (round100) vat = floorToUnit(vat, 100);
+                vatText = '₩ ' + formatNum(vat) + (round100 ? ' (백원미만절사)' : ' (공급가액의 10%)');
                 grandTotal = subTotal + vat;
             } else if (vatType === 'zero') {
                 vatText = '면세 (0%)';
+                if (round100) grandTotal = floorToUnit(grandTotal, 100);
             }
 
             if (document.getElementById('in-st-round').checked) {
-                grandTotal = Math.floor(grandTotal / 10000) * 10000;
+                grandTotal = floorToUnit(grandTotal, 10000);
             }
 
             document.getElementById('out-st-subtotal-num').innerText = formatNum(subTotal);
@@ -1278,6 +1301,7 @@
                 schoolManager: document.getElementById('in-school-manager').value,
                 title: document.getElementById('in-title').value,
                 vatType: document.getElementById('in-vat-type').value,
+                qRound100: document.getElementById('in-q-round-100').checked,
                 invTotal: document.getElementById('in-inv-total').value,
                 invSettle: document.getElementById('in-inv-settle').value,
                 invDeductions: invDeductions,
@@ -1285,6 +1309,7 @@
                 remarks: document.getElementById('in-remarks').value,
                 quotationTable: document.getElementById('tbody-quotation').innerHTML,
                 stVatType: document.getElementById('in-st-vat-type').value,
+                stRound100: document.getElementById('in-st-round-100').checked,
                 stRound: document.getElementById('in-st-round').checked,
                 statementTable: document.getElementById('tbody-statement').innerHTML,
                 stNote: document.querySelector('.out-st-note') ? document.querySelector('.out-st-note').innerHTML : '',
@@ -1309,6 +1334,7 @@
             if (data.title !== undefined) document.getElementById('in-title').value = data.title;
 
             if (data.vatType !== undefined) document.getElementById('in-vat-type').value = data.vatType;
+            if (data.qRound100 !== undefined) document.getElementById('in-q-round-100').checked = !!data.qRound100;
             if (data.invTotal !== undefined) document.getElementById('in-inv-total').value = data.invTotal;
             if (data.invSettle !== undefined) document.getElementById('in-inv-settle').value = data.invSettle;
             if (data.dueDate !== undefined) document.getElementById('in-due-date').value = data.dueDate;
@@ -1331,6 +1357,7 @@
 
             if (data.quotationTable !== undefined) document.getElementById('tbody-quotation').innerHTML = data.quotationTable;
             if (data.stVatType !== undefined) document.getElementById('in-st-vat-type').value = data.stVatType;
+            if (data.stRound100 !== undefined) document.getElementById('in-st-round-100').checked = !!data.stRound100;
             if (data.stRound !== undefined) document.getElementById('in-st-round').checked = data.stRound;
             if (data.statementTable !== undefined) document.getElementById('tbody-statement').innerHTML = data.statementTable;
             if (data.stNote !== undefined && document.querySelector('.out-st-note')) document.querySelector('.out-st-note').innerHTML = data.stNote;
@@ -1564,11 +1591,13 @@
             document.getElementById('in-school-manager').value = '';
             document.getElementById('in-title').value = '';
             document.getElementById('in-vat-type').value = 'zero';
+            document.getElementById('in-q-round-100').checked = false;
             document.getElementById('in-inv-total').value = '';
             document.getElementById('in-inv-settle').value = '';
             document.getElementById('in-due-date').value = '';
             document.getElementById('in-remarks').value = '';
             document.getElementById('in-st-vat-type').value = 'item';
+            document.getElementById('in-st-round-100').checked = false;
             document.getElementById('in-st-round').checked = false;
             document.getElementById('tbody-quotation').innerHTML = emptyQuotationTableHtml();
             document.getElementById('side-inv-deductions').innerHTML = `
