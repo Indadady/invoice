@@ -296,10 +296,16 @@
                             <option value="zero" selected>영세율 (0%)</option>
                         </select>
                     </div>
-                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 mb-3" title="부가세·합계에서 원·십원 단위를 버립니다. (예: 1,234,567 → 1,234,500)">
-                        <input type="checkbox" id="in-q-round-100" onchange="calcTable()" class="w-3.5 h-3.5 text-blue-600 rounded accent-blue-600">
-                        <span class="text-[11px] font-bold text-slate-600">백원 미만 절사 (부가세·합계)</span>
-                    </label>
+                    <div class="mb-3">
+                        <span class="block text-[10px] font-bold text-slate-500 mb-1.5">금액 절사 (부가세·총합계)</span>
+                        <select id="in-q-round-unit" class="w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium" onchange="calcTable()">
+                            <option value="0" selected>절사 없음</option>
+                            <option value="10">십원 미만 절사</option>
+                            <option value="100">백원 미만 절사</option>
+                            <option value="1000">천원 미만 절사</option>
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">예: 합계 8,383,430 → 백원절사 시 8,383,400 / 천원절사 시 8,383,000</p>
+                    </div>
                     <button onclick="addQuotationRow()" class="w-full bg-white border border-blue-300 text-blue-700 font-bold py-2.5 rounded-md text-xs hover:bg-blue-50 transition shadow-sm flex justify-center items-center gap-1.5">
                         <i class="fa-solid fa-plus"></i> 견적 품목 추가
                     </button>
@@ -359,14 +365,23 @@
                             <option value="zero">없음 (면세/0%)</option>
                         </select>
                     </div>
-                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 mb-2">
-                        <input type="checkbox" id="in-st-round-100" onchange="calcStatement()" class="w-3.5 h-3.5 text-cyan-600 rounded accent-cyan-600">
-                        <span class="text-[11px] font-bold text-slate-600">백원 미만 절사 (부가세·합계)</span>
+                    <div class="mb-3">
+                        <span class="block text-[10px] font-bold text-slate-500 mb-1.5">금액 절사 (부가세·합계)</span>
+                        <select id="in-st-round-unit" class="w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white font-medium" onchange="calcStatement()">
+                            <option value="0" selected>절사 없음</option>
+                            <option value="10">십원 미만 절사</option>
+                            <option value="100">백원 미만 절사</option>
+                            <option value="1000">천원 미만 절사</option>
+                            <option value="10000">만원 미만 절사</option>
+                        </select>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-cyan-200 mb-2" title="견적서 품목을 수정하면 거래명세서에도 자동 반영됩니다.">
+                        <input type="checkbox" id="in-st-sync-quote" checked onchange="onSyncQuoteToggle()" class="w-3.5 h-3.5 text-cyan-600 rounded accent-cyan-600">
+                        <span class="text-[11px] font-bold text-slate-600">견적서 항목 자동 연동</span>
                     </label>
-                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 mb-3">
-                        <input type="checkbox" id="in-st-round" onchange="calcStatement()" class="w-3.5 h-3.5 text-cyan-600 rounded accent-cyan-600">
-                        <span class="text-[11px] font-bold text-slate-600">만원 미만 절사 (합계금액)</span>
-                    </label>
+                    <button type="button" onclick="syncQuotationToStatement(false)" class="w-full bg-cyan-600 text-white font-bold py-2 rounded-md text-xs hover:bg-cyan-700 transition shadow-sm flex justify-center items-center gap-1.5 mb-2">
+                        <i class="fa-solid fa-link"></i> 견적서 항목 지금 불러오기
+                    </button>
                     <button onclick="addStatementRow()" class="w-full bg-white border border-cyan-300 text-cyan-700 font-bold py-2.5 rounded-md text-xs hover:bg-cyan-50 transition shadow-sm flex justify-center items-center gap-1.5">
                         <i class="fa-solid fa-plus"></i> 거래 품목 추가
                     </button>
@@ -813,6 +828,7 @@
         
         let currentMode = 'quotation';
         let currentRep = 'lee';
+        let suppressQuoteSync = false;
 
         function parseNum(str) {
             if(!str) return 0;
@@ -930,7 +946,11 @@
             } else if(mode === 'invoice') {
                 updateInvoiceCalc();
             } else {
-                calcStatement();
+                if (!suppressQuoteSync && document.getElementById('in-st-sync-quote')?.checked) {
+                    syncQuotationToStatement(true);
+                } else {
+                    calcStatement();
+                }
             }
         }
 
@@ -1005,6 +1025,43 @@
             return sign * Math.floor(Math.abs(amount) / unit) * unit;
         }
 
+        function getRoundUnit(selectId) {
+            const el = document.getElementById(selectId);
+            const n = parseInt(el?.value || '0', 10);
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        }
+
+        function roundUnitLabel(unit) {
+            if (unit === 10) return '십원미만절사';
+            if (unit === 100) return '백원미만절사';
+            if (unit === 1000) return '천원미만절사';
+            if (unit === 10000) return '만원미만절사';
+            return '';
+        }
+
+        function applyAmountRounding(subTotal, vatType, roundUnit, modes) {
+            // modes: { includedLabel, excludedKind: 'excluded'|'item', zeroLabel }
+            let vat = 0;
+            let grandTotal = subTotal;
+            let vatText = '';
+            const label = roundUnitLabel(roundUnit);
+
+            if (vatType === 'included' || vatType === 'item') {
+                vatText = modes.includedLabel;
+                if (roundUnit) grandTotal = floorToUnit(grandTotal, roundUnit);
+            } else if (vatType === 'excluded') {
+                vat = Math.floor(subTotal * 0.1);
+                if (roundUnit) vat = floorToUnit(vat, roundUnit);
+                vatText = '₩ ' + formatNum(vat) + (label ? ` (${label})` : (modes.excludedSuffix || ''));
+                grandTotal = subTotal + vat;
+                if (roundUnit) grandTotal = floorToUnit(grandTotal, roundUnit);
+            } else {
+                vatText = modes.zeroLabel;
+                if (roundUnit) grandTotal = floorToUnit(grandTotal, roundUnit);
+            }
+            return { vat, grandTotal, vatText };
+        }
+
         // ================= 견적서 연산 =================
         function calcTable() {
             let subTotal = 0;
@@ -1017,32 +1074,63 @@
             });
 
             const vatType = document.getElementById('in-vat-type').value;
-            const round100 = document.getElementById('in-q-round-100').checked;
-            let vat = 0;
-            let grandTotal = subTotal;
-            let vatText = "";
+            const roundUnit = getRoundUnit('in-q-round-unit');
+            const { grandTotal, vatText } = applyAmountRounding(subTotal, vatType, roundUnit, {
+                includedLabel: '포함 (Included)',
+                zeroLabel: '영세율 (0%)',
+                excludedSuffix: ''
+            });
 
-            if (vatType === 'included') {
-                vatText = "포함 (Included)";
-                if (round100) grandTotal = floorToUnit(grandTotal, 100);
-            } else if (vatType === 'excluded') {
-                vat = Math.floor(subTotal * 0.1);
-                if (round100) vat = floorToUnit(vat, 100);
-                vatText = "₩ " + formatNum(vat) + (round100 ? " (백원미만절사)" : "");
-                grandTotal = subTotal + vat;
-            } else if (vatType === 'zero') {
-                vatText = "영세율 (0%)";
-                if (round100) grandTotal = floorToUnit(grandTotal, 100);
-            }
-
-            // 견적서 합계 (숫자 앞, 한글 뒤)
             document.getElementById('out-q-subtotal-num').innerText = formatNum(subTotal);
             document.getElementById('out-q-subtotal-kr').innerText = numberToKorean(subTotal);
-            
             document.getElementById('out-q-vat').innerText = vatText;
-            
             document.getElementById('out-q-grandtotal-num').innerText = formatNum(grandTotal);
             document.getElementById('out-q-grandtotal-kr').innerText = numberToKorean(grandTotal);
+
+            // 견적서 수정 시 거래명세서 자동 연동
+            if (!suppressQuoteSync && document.getElementById('in-st-sync-quote')?.checked) {
+                syncQuotationToStatement(true);
+            }
+        }
+
+        function getQuotationItems() {
+            const items = [];
+            document.querySelectorAll('#tbody-quotation tr.item-row').forEach(row => {
+                const name = (row.children[0]?.innerText || '').trim();
+                const desc = (row.querySelector('.desc-col')?.innerText || '').trim();
+                const unit = parseNum(row.querySelector('.col-unit')?.innerText);
+                const qtyRaw = (row.querySelector('.col-qty')?.innerText || '').trim();
+                const qty = qtyRaw === '' ? 0 : parseNum(qtyRaw);
+                if (!name && !desc) return;
+                items.push({ name: name || '품목', desc: desc || '-', unit, qty: qty || 1 });
+            });
+            return items;
+        }
+
+        /** 견적서 품목 → 거래명세서 연동 */
+        function syncQuotationToStatement(silent) {
+            const items = getQuotationItems();
+            if (!items.length) {
+                if (!silent) alert('연동할 견적 항목이 없습니다.');
+                return false;
+            }
+            const tbody = document.getElementById('tbody-statement');
+            tbody.innerHTML = '';
+            items.forEach((it, i) => {
+                const tr = document.createElement('tr');
+                tr.className = 'item-row-st';
+                tr.innerHTML = statementRowHtml(i + 1, it.name, it.desc, it.qty, formatNum(it.unit));
+                tbody.appendChild(tr);
+            });
+            calcStatement();
+            if (!silent) alert(`견적서 ${items.length}개 항목을 거래명세서로 연동했습니다.`);
+            return true;
+        }
+
+        function onSyncQuoteToggle() {
+            if (document.getElementById('in-st-sync-quote').checked) {
+                syncQuotationToStatement(true);
+            }
         }
 
         function addQuotationRow() {
@@ -1114,6 +1202,10 @@
         }
 
         function addStatementRow() {
+            const syncEl = document.getElementById('in-st-sync-quote');
+            if (syncEl?.checked) {
+                syncEl.checked = false;
+            }
             const tbody = document.getElementById('tbody-statement');
             const no = tbody.querySelectorAll('tr.item-row-st').length + 1;
             const tr = document.createElement('tr');
@@ -1124,6 +1216,10 @@
         }
 
         function removeStatementRow(btn) {
+            const syncEl = document.getElementById('in-st-sync-quote');
+            if (syncEl?.checked) {
+                syncEl.checked = false;
+            }
             const tr = btn.closest('tr');
             const tbody = tr.parentElement;
             if(tbody.querySelectorAll('tr.item-row-st').length <= 1) {
@@ -1154,26 +1250,13 @@
             });
 
             const vatType = document.getElementById('in-st-vat-type').value;
-            const round100 = document.getElementById('in-st-round-100').checked;
-            let vatText = '';
-            let grandTotal = subTotal;
-
-            if (vatType === 'item') {
-                vatText = '상기 품목에 포함';
-                if (round100) grandTotal = floorToUnit(grandTotal, 100);
-            } else if (vatType === 'excluded') {
-                let vat = Math.floor(subTotal * 0.1);
-                if (round100) vat = floorToUnit(vat, 100);
-                vatText = '₩ ' + formatNum(vat) + (round100 ? ' (백원미만절사)' : ' (공급가액의 10%)');
-                grandTotal = subTotal + vat;
-            } else if (vatType === 'zero') {
-                vatText = '면세 (0%)';
-                if (round100) grandTotal = floorToUnit(grandTotal, 100);
-            }
-
-            if (document.getElementById('in-st-round').checked) {
-                grandTotal = floorToUnit(grandTotal, 10000);
-            }
+            const roundUnit = getRoundUnit('in-st-round-unit');
+            const mappedType = vatType === 'item' ? 'item' : vatType;
+            const { grandTotal, vatText } = applyAmountRounding(subTotal, mappedType === 'item' ? 'item' : vatType, roundUnit, {
+                includedLabel: '상기 품목에 포함',
+                zeroLabel: '면세 (0%)',
+                excludedSuffix: ' (공급가액의 10%)'
+            });
 
             document.getElementById('out-st-subtotal-num').innerText = formatNum(subTotal);
             document.getElementById('out-st-subtotal-kr').innerText = numberToKorean(subTotal);
@@ -1301,7 +1384,7 @@
                 schoolManager: document.getElementById('in-school-manager').value,
                 title: document.getElementById('in-title').value,
                 vatType: document.getElementById('in-vat-type').value,
-                qRound100: document.getElementById('in-q-round-100').checked,
+                qRoundUnit: getRoundUnit('in-q-round-unit'),
                 invTotal: document.getElementById('in-inv-total').value,
                 invSettle: document.getElementById('in-inv-settle').value,
                 invDeductions: invDeductions,
@@ -1309,8 +1392,8 @@
                 remarks: document.getElementById('in-remarks').value,
                 quotationTable: document.getElementById('tbody-quotation').innerHTML,
                 stVatType: document.getElementById('in-st-vat-type').value,
-                stRound100: document.getElementById('in-st-round-100').checked,
-                stRound: document.getElementById('in-st-round').checked,
+                stRoundUnit: getRoundUnit('in-st-round-unit'),
+                stSyncQuote: document.getElementById('in-st-sync-quote').checked,
                 statementTable: document.getElementById('tbody-statement').innerHTML,
                 stNote: document.querySelector('.out-st-note') ? document.querySelector('.out-st-note').innerHTML : '',
                 savedAt: new Date().toISOString()
@@ -1319,6 +1402,7 @@
 
         function applyFormData(data) {
             if (!data || typeof data !== 'object') return;
+            suppressQuoteSync = true;
 
             if (data.docNo !== undefined) document.getElementById('in-doc-no').value = data.docNo;
             if (data.date !== undefined) document.getElementById('in-date').value = data.date;
@@ -1334,7 +1418,12 @@
             if (data.title !== undefined) document.getElementById('in-title').value = data.title;
 
             if (data.vatType !== undefined) document.getElementById('in-vat-type').value = data.vatType;
-            if (data.qRound100 !== undefined) document.getElementById('in-q-round-100').checked = !!data.qRound100;
+            // 절사 단위 (구버전 체크박스 호환)
+            if (data.qRoundUnit !== undefined) {
+                document.getElementById('in-q-round-unit').value = String(data.qRoundUnit || 0);
+            } else if (data.qRound100) {
+                document.getElementById('in-q-round-unit').value = '100';
+            }
             if (data.invTotal !== undefined) document.getElementById('in-inv-total').value = data.invTotal;
             if (data.invSettle !== undefined) document.getElementById('in-inv-settle').value = data.invSettle;
             if (data.dueDate !== undefined) document.getElementById('in-due-date').value = data.dueDate;
@@ -1357,8 +1446,16 @@
 
             if (data.quotationTable !== undefined) document.getElementById('tbody-quotation').innerHTML = data.quotationTable;
             if (data.stVatType !== undefined) document.getElementById('in-st-vat-type').value = data.stVatType;
-            if (data.stRound100 !== undefined) document.getElementById('in-st-round-100').checked = !!data.stRound100;
-            if (data.stRound !== undefined) document.getElementById('in-st-round').checked = data.stRound;
+            if (data.stRoundUnit !== undefined) {
+                document.getElementById('in-st-round-unit').value = String(data.stRoundUnit || 0);
+            } else if (data.stRound) {
+                document.getElementById('in-st-round-unit').value = '10000';
+            } else if (data.stRound100) {
+                document.getElementById('in-st-round-unit').value = '100';
+            }
+            if (data.stSyncQuote !== undefined) {
+                document.getElementById('in-st-sync-quote').checked = !!data.stSyncQuote;
+            }
             if (data.statementTable !== undefined) document.getElementById('tbody-statement').innerHTML = data.statementTable;
             if (data.stNote !== undefined && document.querySelector('.out-st-note')) document.querySelector('.out-st-note').innerHTML = data.stNote;
 
@@ -1373,6 +1470,7 @@
             calcTable();
             updateInvoiceCalc();
             calcStatement();
+            suppressQuoteSync = false;
         }
 
         function lsGet(key, fallback = '{}') {
@@ -1591,14 +1689,14 @@
             document.getElementById('in-school-manager').value = '';
             document.getElementById('in-title').value = '';
             document.getElementById('in-vat-type').value = 'zero';
-            document.getElementById('in-q-round-100').checked = false;
+            document.getElementById('in-q-round-unit').value = '0';
             document.getElementById('in-inv-total').value = '';
             document.getElementById('in-inv-settle').value = '';
             document.getElementById('in-due-date').value = '';
             document.getElementById('in-remarks').value = '';
             document.getElementById('in-st-vat-type').value = 'item';
-            document.getElementById('in-st-round-100').checked = false;
-            document.getElementById('in-st-round').checked = false;
+            document.getElementById('in-st-round-unit').value = '0';
+            document.getElementById('in-st-sync-quote').checked = true;
             document.getElementById('tbody-quotation').innerHTML = emptyQuotationTableHtml();
             document.getElementById('side-inv-deductions').innerHTML = `
                 <div class="flex gap-1 deduction-row items-center">
@@ -1634,7 +1732,11 @@
                 docContainer.addEventListener('input', function(e) {
                     if(e.target.hasAttribute('contenteditable')) {
                         if(currentMode === 'quotation') calcTable();
-                        else if(currentMode === 'statement') calcStatement();
+                        else if(currentMode === 'statement') {
+                            const syncEl = document.getElementById('in-st-sync-quote');
+                            if (syncEl?.checked) syncEl.checked = false;
+                            calcStatement();
+                        }
                     }
                 }, true);
 
