@@ -376,22 +376,36 @@
                 <textarea id="in-remarks" rows="3" placeholder="예: 항공료는 발권 시점 유가·환율에 따라 변동될 수 있습니다.&#10;비워두면 견적서/청구서에 노출되지 않습니다." class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-y leading-relaxed" oninput="updateDoc()"></textarea>
             </div>
 
-            <!-- JSON 데이터 백업 -->
-            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
-                <label class="block text-[11px] font-bold text-slate-500 mb-2">데이터 백업/복구</label>
-                <div class="flex gap-2">
-                    <button onclick="exportJSON()" class="flex-1 bg-white border border-slate-300 text-slate-600 text-[11px] py-2 rounded hover:bg-slate-100 transition shadow-sm font-bold flex justify-center items-center gap-1.5">
-                        <i class="fa-solid fa-download"></i> 파일 저장
-                    </button>
-                    <label class="flex-1 bg-white border border-slate-300 text-slate-600 text-[11px] py-2 rounded text-center cursor-pointer hover:bg-slate-100 transition shadow-sm font-bold flex justify-center items-center gap-1.5">
-                        <i class="fa-solid fa-upload"></i> 불러오기
+            <!-- 문서 템플릿 보관함 (건별 고유 저장) -->
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2 space-y-2">
+                <div class="flex justify-between items-center">
+                    <label class="block text-[11px] font-bold text-slate-500">문서 템플릿 보관함</label>
+                    <button type="button" onclick="clearFormNew()" class="text-[10px] font-bold text-slate-500 underline hover:text-blue-600 transition">입력 초기화(새문서)</button>
+                </div>
+                <input type="text" id="preset-search" placeholder="🔍 제목·수신처 검색..." class="w-full border border-slate-300 rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" oninput="updatePresetDropdown(this.value)">
+                <select id="preset-select" class="w-full border border-slate-300 rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="">저장된 문서 선택...</option>
+                </select>
+                <div class="flex gap-1.5">
+                    <button type="button" onclick="loadPreset()" class="flex-1 bg-white border border-slate-300 text-slate-700 text-[11px] py-2 rounded hover:bg-slate-100 transition shadow-sm font-bold">불러오기</button>
+                    <button type="button" onclick="savePreset()" class="flex-1 bg-blue-600 text-white text-[11px] py-2 rounded hover:bg-blue-700 transition shadow-sm font-bold">현재 상태 저장</button>
+                    <button type="button" onclick="deletePreset()" class="bg-white border border-rose-200 text-rose-600 text-[11px] px-3 py-2 rounded hover:bg-rose-50 transition shadow-sm font-bold">삭제</button>
+                </div>
+                <div class="flex flex-col gap-1.5 pt-1 border-t border-slate-200">
+                    <label class="w-full bg-white border border-slate-300 text-slate-600 text-[11px] py-2 rounded text-center cursor-pointer hover:bg-slate-100 transition shadow-sm font-bold flex justify-center items-center gap-1.5">
+                        <i class="fa-solid fa-folder-open"></i> 데이터 복구(업로드)
                         <input type="file" id="import-file" class="hidden" accept=".json" onchange="importJSON(event)">
                     </label>
+                    <button type="button" onclick="exportCurrentJSON()" class="w-full bg-sky-50 border border-sky-300 text-sky-700 text-[11px] py-2 rounded hover:bg-sky-100 transition shadow-sm font-bold flex justify-center items-center gap-1.5">
+                        <i class="fa-solid fa-share-from-square"></i> 현재 문서 단독 공유(JSON)
+                    </button>
+                    <button type="button" onclick="exportAllJSON()" class="w-full bg-white border border-slate-300 text-slate-600 text-[11px] py-2 rounded hover:bg-slate-100 transition shadow-sm font-bold flex justify-center items-center gap-1.5" title="저장된 모든 문서를 한 번에 백업합니다.">
+                        <i class="fa-solid fa-download"></i> 전체 데이터 백업
+                    </button>
                 </div>
             </div>
             
             <div class="flex-1"></div>
-            <button onclick="resetAll()" class="text-[11px] text-slate-400 underline text-center hover:text-slate-600 transition print-hidden mt-4">모든 입력 초기화</button>
         </aside>
 
         <!-- 우측: A4 렌더링 패널 (출력부) -->
@@ -1209,7 +1223,42 @@
             updateInvoiceCalc();
         }
 
-        function exportJSON() {
+        // ================= 문서 건별 저장 (가격산출내역서와 동일 패턴) =================
+        const PRESET_STORE_KEY = 'tourmaker_invoice_docs';
+        const DOC_SHAPE_KEYS = ['mode', 'docNo', 'school', 'title', 'quotationTable', 'statementTable', 'invDeductions', 'date'];
+
+        function modeLabelOf(mode) {
+            return mode === 'invoice' ? '청구서' : (mode === 'statement' ? '거래명세서' : '견적서');
+        }
+
+        function sanitizePresetName(name) {
+            return String(name || '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        function escapeAttr(str) {
+            return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
+
+        function todayYmd() {
+            const t = new Date();
+            return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+        }
+
+        function getAutoFileName(data) {
+            const src = data || getFormData();
+            const modePart = modeLabelOf(src.mode || currentMode);
+            const school = sanitizePresetName(src.school) || '수신처미상';
+            const title = sanitizePresetName(src.title) || '건명미상';
+            const dateRaw = String(src.date || '').replace(/[^0-9]/g, '');
+            const datePart = dateRaw.length >= 8 ? dateRaw.slice(2, 8) : (dateRaw || '날짜미상');
+            const docNo = sanitizePresetName(src.docNo);
+            const base = docNo
+                ? `${modePart}_${docNo}_${school}_${title}`
+                : `${modePart}_${datePart}_${school}_${title}`;
+            return sanitizePresetName(base) || `${modePart}_${datePart}`;
+        }
+
+        function getFormData() {
             const invDeductions = [];
             document.querySelectorAll('#side-inv-deductions .deduction-row').forEach(row => {
                 invDeductions.push({
@@ -1217,14 +1266,13 @@
                     amount: row.querySelector('.ded-amount').value
                 });
             });
-
-            const data = {
+            return {
                 mode: currentMode,
                 rep: currentRep,
                 showStamp: document.getElementById('toggle-stamp-chk').checked,
                 docNo: document.getElementById('in-doc-no').value,
                 date: document.getElementById('in-date').value,
-                dateBlankMode: document.getElementById('in-date-blank-mode').value, // ''|'d'|'md'
+                dateBlankMode: document.getElementById('in-date-blank-mode').value,
                 school: document.getElementById('in-school').value,
                 schoolAddr: document.getElementById('in-school-addr').value,
                 schoolManager: document.getElementById('in-school-manager').value,
@@ -1232,96 +1280,323 @@
                 vatType: document.getElementById('in-vat-type').value,
                 invTotal: document.getElementById('in-inv-total').value,
                 invSettle: document.getElementById('in-inv-settle').value,
-                invDeductions: invDeductions, 
+                invDeductions: invDeductions,
                 dueDate: document.getElementById('in-due-date').value,
                 remarks: document.getElementById('in-remarks').value,
                 quotationTable: document.getElementById('tbody-quotation').innerHTML,
                 stVatType: document.getElementById('in-st-vat-type').value,
                 stRound: document.getElementById('in-st-round').checked,
                 statementTable: document.getElementById('tbody-statement').innerHTML,
-                stNote: document.querySelector('.out-st-note') ? document.querySelector('.out-st-note').innerHTML : ''
+                stNote: document.querySelector('.out-st-note') ? document.querySelector('.out-st-note').innerHTML : '',
+                savedAt: new Date().toISOString()
             };
+        }
 
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        function applyFormData(data) {
+            if (!data || typeof data !== 'object') return;
+
+            if (data.docNo !== undefined) document.getElementById('in-doc-no').value = data.docNo;
+            if (data.date !== undefined) document.getElementById('in-date').value = data.date;
+            if (data.dateBlankMode !== undefined) {
+                document.getElementById('in-date-blank-mode').value = data.dateBlankMode;
+            } else if (data.dateBlank !== undefined) {
+                document.getElementById('in-date-blank-mode').value = data.dateBlank ? 'md' : '';
+            }
+
+            if (data.school !== undefined) document.getElementById('in-school').value = data.school;
+            if (data.schoolAddr !== undefined) document.getElementById('in-school-addr').value = data.schoolAddr;
+            if (data.schoolManager !== undefined) document.getElementById('in-school-manager').value = data.schoolManager;
+            if (data.title !== undefined) document.getElementById('in-title').value = data.title;
+
+            if (data.vatType !== undefined) document.getElementById('in-vat-type').value = data.vatType;
+            if (data.invTotal !== undefined) document.getElementById('in-inv-total').value = data.invTotal;
+            if (data.invSettle !== undefined) document.getElementById('in-inv-settle').value = data.invSettle;
+            if (data.dueDate !== undefined) document.getElementById('in-due-date').value = data.dueDate;
+            if (data.remarks !== undefined) document.getElementById('in-remarks').value = data.remarks;
+
+            if (data.invDeductions !== undefined) {
+                const container = document.getElementById('side-inv-deductions');
+                container.innerHTML = '';
+                (data.invDeductions.length ? data.invDeductions : [{ name: '선급금(계약금)', amount: '0' }]).forEach((ded, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex gap-1 deduction-row items-center' + (idx ? ' mt-2' : '');
+                    div.innerHTML = `
+                        <input type="text" value="${escapeAttr(ded.name)}" class="w-1/2 border border-blue-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 ded-name transition" oninput="updateInvoiceCalc()">
+                        <input type="text" value="${escapeAttr(ded.amount)}" class="w-1/2 border border-blue-200 bg-blue-50 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 text-blue-700 font-medium text-right ded-amount transition" oninput="formatInputField(this); updateInvoiceCalc()">
+                        <button type="button" onclick="removeInvoiceDeduction(this)" class="text-rose-500 px-1 hover:bg-rose-50 rounded transition"><i class="fa-solid fa-minus"></i></button>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
+            if (data.quotationTable !== undefined) document.getElementById('tbody-quotation').innerHTML = data.quotationTable;
+            if (data.stVatType !== undefined) document.getElementById('in-st-vat-type').value = data.stVatType;
+            if (data.stRound !== undefined) document.getElementById('in-st-round').checked = data.stRound;
+            if (data.statementTable !== undefined) document.getElementById('tbody-statement').innerHTML = data.statementTable;
+            if (data.stNote !== undefined && document.querySelector('.out-st-note')) document.querySelector('.out-st-note').innerHTML = data.stNote;
+
+            if (data.rep !== undefined) setRep(data.rep);
+            if (data.showStamp !== undefined) {
+                document.getElementById('toggle-stamp-chk').checked = data.showStamp;
+                toggleStamp();
+            }
+            if (data.mode !== undefined) setMode(data.mode);
+
+            updateDoc();
+            calcTable();
+            updateInvoiceCalc();
+            calcStatement();
+        }
+
+        function lsGet(key, fallback = '{}') {
+            try { return localStorage.getItem(key) || fallback; }
+            catch (e) { console.warn('localStorage read error:', e); return fallback; }
+        }
+        function lsSet(key, value) {
+            try { localStorage.setItem(key, value); return true; }
+            catch (e) {
+                console.warn('localStorage write error:', e);
+                alert('⚠️ 저장 실패: 브라우저 저장 공간이 부족하거나 개인정보 보호 모드일 수 있습니다.');
+                return false;
+            }
+        }
+        function safeJsonParse(text, fallback) {
+            try { return JSON.parse(text); } catch (e) { return fallback; }
+        }
+        function isPlainObject(v) {
+            return !!v && typeof v === 'object' && !Array.isArray(v);
+        }
+        function getPresetStore() {
+            const parsed = safeJsonParse(lsGet(PRESET_STORE_KEY), {});
+            return isPlainObject(parsed) ? parsed : {};
+        }
+        function looksLikeSingleDoc(obj) {
+            return isPlainObject(obj) && DOC_SHAPE_KEYS.some(k => k in obj);
+        }
+        function normalizeImportedDocMap(raw) {
+            let source = raw;
+            if (isPlainObject(source) && isPlainObject(source.presets)) source = source.presets;
+            if (isPlainObject(source) && isPlainObject(source.docs)) source = source.docs;
+            if (!isPlainObject(source)) throw new Error('지원하지 않는 JSON 루트 형식입니다.');
+
+            // 구버전: 단일 flat 문서 JSON
+            if (looksLikeSingleDoc(source)) {
+                return { [getAutoFileName(source)]: source };
+            }
+
+            const normalized = {};
+            Object.entries(source).forEach(([key, value]) => {
+                if (!isPlainObject(value)) return;
+                if (!looksLikeSingleDoc(value) && !('quotationTable' in value) && !('school' in value) && !('title' in value)) return;
+                const safeName = sanitizePresetName(key) || getAutoFileName(value);
+                normalized[safeName] = value;
+            });
+            if (!Object.keys(normalized).length) throw new Error('복원 가능한 문서 데이터가 없습니다.');
+            return normalized;
+        }
+
+        function updatePresetDropdown(filterText = '') {
+            const select = document.getElementById('preset-select');
+            if (!select) return;
+            const presets = getPresetStore();
+            const keys = Object.keys(presets).sort((a, b) => a.localeCompare(b, 'ko'));
+            select.innerHTML = '<option value="">저장된 문서 선택...</option>';
+            let matchCount = 0;
+            keys.forEach(key => {
+                if (key.toLowerCase().includes(String(filterText || '').toLowerCase())) {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = key;
+                    select.appendChild(option);
+                    matchCount++;
+                }
+            });
+            if (filterText && matchCount > 0) select.selectedIndex = 1;
+        }
+
+        function savePreset() {
+            const defaultName = getAutoFileName();
+            const presetName = sanitizePresetName(prompt('현재 문서를 브라우저에 저장할 이름을 입력하세요.', defaultName));
+            if (!presetName) return;
+            const presets = getPresetStore();
+            presets[presetName] = getFormData();
+            if (lsSet(PRESET_STORE_KEY, JSON.stringify(presets, null, 2))) {
+                const search = document.getElementById('preset-search');
+                if (search) search.value = '';
+                updatePresetDropdown();
+                document.getElementById('preset-select').value = presetName;
+                alert(`[${presetName}] 문서가 저장되었습니다.`);
+            }
+        }
+
+        function loadPreset() {
+            const selectedName = document.getElementById('preset-select').value;
+            if (!selectedName) return alert('불러올 문서를 선택하세요.');
+            const presets = getPresetStore();
+            if (presets[selectedName]) {
+                applyFormData(presets[selectedName]);
+                alert(`[${selectedName}] 문서를 불러왔습니다.`);
+            }
+        }
+
+        function deletePreset() {
+            const selectedName = document.getElementById('preset-select').value;
+            if (!selectedName) return alert('삭제할 문서를 선택하세요.');
+            if (!confirm(`[${selectedName}] 문서를 영구 삭제하시겠습니까?`)) return;
+            const presets = getPresetStore();
+            delete presets[selectedName];
+            if (lsSet(PRESET_STORE_KEY, JSON.stringify(presets, null, 2))) {
+                updatePresetDropdown();
+                alert('삭제되었습니다.');
+            }
+        }
+
+        function downloadJsonFile(filename, obj) {
+            const payload = '\uFEFF' + JSON.stringify(obj, null, 2);
+            const blob = new Blob([payload], { type: 'application/json;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const modeLabel = currentMode === 'quotation' ? '견적서' : (currentMode === 'invoice' ? '청구서' : '거래명세서');
-            a.download = `투어메이커_${modeLabel}_${data.docNo || '백업'}.json`;
+            a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
         }
 
+        /** 현재 화면 문서만 단독 JSON으로 저장 (건별 고유 파일명) */
+        function exportCurrentJSON() {
+            const data = getFormData();
+            const presetName = getAutoFileName(data);
+            downloadJsonFile(`공유용_${presetName}.json`, { [presetName]: data });
+        }
+
+        /** 브라우저에 저장된 모든 문서 일괄 백업 */
+        function exportAllJSON() {
+            const presets = getPresetStore();
+            if (!Object.keys(presets).length) {
+                return alert('백업할 데이터가 없습니다. 먼저 「현재 상태 저장」으로 문서를 보관하거나, 「현재 문서 단독 공유」를 사용하세요.');
+            }
+            downloadJsonFile(`tourmaker_invoice_docs_${todayYmd()}.json`, presets);
+        }
+
         function importJSON(event) {
-            const file = event.target.files[0];
+            const input = event.target;
+            const file = input.files?.[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    
-                    if(data.docNo !== undefined) document.getElementById('in-doc-no').value = data.docNo;
-                    if(data.date !== undefined) document.getElementById('in-date').value = data.date;
-                    // 공란 모드 복구 (구버전 백업 호환: dateBlank boolean → 'md')
-                    if(data.dateBlankMode !== undefined) {
-                        document.getElementById('in-date-blank-mode').value = data.dateBlankMode;
-                    } else if(data.dateBlank !== undefined) {
-                        document.getElementById('in-date-blank-mode').value = data.dateBlank ? 'md' : '';
-                    }
-                    
-                    if(data.school !== undefined) document.getElementById('in-school').value = data.school;
-                    if(data.schoolAddr !== undefined) document.getElementById('in-school-addr').value = data.schoolAddr;
-                    if(data.schoolManager !== undefined) document.getElementById('in-school-manager').value = data.schoolManager;
-                    if(data.title !== undefined) document.getElementById('in-title').value = data.title;
-                    
-                    if(data.vatType !== undefined) document.getElementById('in-vat-type').value = data.vatType;
-                    if(data.invTotal !== undefined) document.getElementById('in-inv-total').value = data.invTotal;
-                    if(data.invSettle !== undefined) document.getElementById('in-inv-settle').value = data.invSettle;
-                    if(data.dueDate !== undefined) document.getElementById('in-due-date').value = data.dueDate;
-                    if(data.remarks !== undefined) document.getElementById('in-remarks').value = data.remarks;
-                    
-                    // 기수령 항목 복원 처리
-                    if(data.invDeductions !== undefined) {
-                        const container = document.getElementById('side-inv-deductions');
-                        container.innerHTML = '';
-                        data.invDeductions.forEach(ded => {
-                            const div = document.createElement('div');
-                            div.className = 'flex gap-1 deduction-row items-center mt-2';
-                            div.innerHTML = `
-                                <input type="text" value="${ded.name}" class="w-1/2 border border-blue-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 ded-name transition" oninput="updateInvoiceCalc()">
-                                <input type="text" value="${ded.amount}" class="w-1/2 border border-blue-200 bg-blue-50 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 text-blue-700 font-medium text-right ded-amount transition" oninput="formatInputField(this); updateInvoiceCalc()">
-                                <button type="button" onclick="removeInvoiceDeduction(this)" class="text-rose-500 px-1 hover:bg-rose-50 rounded transition"><i class="fa-solid fa-minus"></i></button>
-                            `;
-                            container.appendChild(div);
-                        });
-                    }
-                    
-                    if(data.quotationTable !== undefined) document.getElementById('tbody-quotation').innerHTML = data.quotationTable;
-
-                    if(data.stVatType !== undefined) document.getElementById('in-st-vat-type').value = data.stVatType;
-                    if(data.stRound !== undefined) document.getElementById('in-st-round').checked = data.stRound;
-                    if(data.statementTable !== undefined) document.getElementById('tbody-statement').innerHTML = data.statementTable;
-                    if(data.stNote !== undefined && document.querySelector('.out-st-note')) document.querySelector('.out-st-note').innerHTML = data.stNote;
-                    
-                    if(data.rep !== undefined) setRep(data.rep);
-                    if(data.showStamp !== undefined) {
-                        document.getElementById('toggle-stamp-chk').checked = data.showStamp;
-                        toggleStamp();
-                    }
-                    if(data.mode !== undefined) setMode(data.mode);
-                    
-                    updateDoc();
-                    calcTable();
-                    updateInvoiceCalc();
-                    calcStatement();
-                    
-                    alert('데이터를 성공적으로 불러왔습니다.');
-                } catch (err) {
-                    alert('유효하지 않은 JSON 파일입니다.');
-                }
-                event.target.value = '';
+            reader.onerror = () => {
+                alert('파일을 읽는 중 오류가 발생했습니다.');
+                input.value = '';
             };
-            reader.readAsText(file);
+            reader.onload = e => {
+                try {
+                    const rawText = String(e.target?.result || '').replace(/^\uFEFF/, '');
+                    if (!rawText.trim()) throw new Error('빈 파일입니다.');
+                    const importedRaw = JSON.parse(rawText);
+                    const importedDocs = normalizeImportedDocMap(importedRaw);
+                    const currentData = getPresetStore();
+                    const importedKeys = Object.keys(importedDocs);
+                    const overwriteKeys = importedKeys.filter(key => key in currentData);
+                    if (overwriteKeys.length) {
+                        const preview = overwriteKeys.slice(0, 5).join(', ');
+                        const moreText = overwriteKeys.length > 5 ? ` 외 ${overwriteKeys.length - 5}건` : '';
+                        const ok = confirm(`동일한 이름의 문서 ${overwriteKeys.length}건이 있습니다.\n[${preview}${moreText}]\n기존 데이터를 덮어쓸까요?`);
+                        if (!ok) { input.value = ''; return; }
+                    }
+                    const merged = { ...currentData, ...importedDocs };
+                    if (!lsSet(PRESET_STORE_KEY, JSON.stringify(merged, null, 2))) {
+                        input.value = '';
+                        return;
+                    }
+                    updatePresetDropdown();
+                    const targetKey = importedKeys[importedKeys.length - 1];
+                    if (targetKey) {
+                        document.getElementById('preset-select').value = targetKey;
+                        applyFormData(merged[targetKey]);
+                        alert(`✅ 복원이 완료되었습니다.\n[${targetKey}] 문서를 화면에 불러왔습니다.\n(가져온 문서 ${importedKeys.length}건)`);
+                    } else {
+                        alert(`데이터 복구가 완료되었습니다.\n- 가져온 문서: ${importedKeys.length}건`);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert(`업로드 실패: ${err.message || '유효하지 않은 JSON 파일입니다.'}`);
+                } finally {
+                    input.value = '';
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+        }
+
+        function emptyQuotationTableHtml() {
+            return `
+                <tr class="item-row">
+                    <td contenteditable="true" class="font-bold text-slate-800">항목명</td>
+                    <td contenteditable="true" class="desc-col text-slate-700">상세 내역 입력</td>
+                    <td contenteditable="true" class="text-right pr-4 col-unit">0</td>
+                    <td contenteditable="true" class="col-qty">1</td>
+                    <td class="text-right pr-4 relative font-bold text-slate-800">
+                        <span class="col-sum">0</span>
+                        <div class="row-ctrl print-hidden"><button onclick="removeRow(this)" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition"><i class="fa-solid fa-minus"></i></button></div>
+                    </td>
+                </tr>
+                <tr class="item-row">
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true" class="desc-col"></td>
+                    <td contenteditable="true" class="text-right pr-4 col-unit">0</td>
+                    <td contenteditable="true" class="col-qty"></td>
+                    <td class="text-right pr-4 relative font-bold text-slate-800">
+                        <span class="col-sum">0</span>
+                        <div class="row-ctrl print-hidden"><button onclick="removeRow(this)" class="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition"><i class="fa-solid fa-minus"></i></button></div>
+                    </td>
+                </tr>`;
+        }
+
+        /** 새 문서 작성용 화면 초기화 (다른 건과 섞이지 않도록) */
+        function clearFormNew() {
+            if (!confirm('모든 입력 내용을 지우고 새 문서를 작성하시겠습니까?\n(브라우저에 저장된 템플릿은 유지됩니다)')) return;
+            const ymd = todayYmd();
+            const yy = ymd.slice(2, 4);
+            const mmdd = ymd.slice(5).replace('-', '');
+            document.getElementById('in-doc-no').value = `TM-${yy}${mmdd}`;
+            document.getElementById('in-date').value = ymd;
+            document.getElementById('in-date-blank-mode').value = '';
+            document.getElementById('in-school').value = '';
+            document.getElementById('in-school-addr').value = '';
+            document.getElementById('in-school-manager').value = '';
+            document.getElementById('in-title').value = '';
+            document.getElementById('in-vat-type').value = 'zero';
+            document.getElementById('in-inv-total').value = '';
+            document.getElementById('in-inv-settle').value = '';
+            document.getElementById('in-due-date').value = '';
+            document.getElementById('in-remarks').value = '';
+            document.getElementById('in-st-vat-type').value = 'item';
+            document.getElementById('in-st-round').checked = false;
+            document.getElementById('tbody-quotation').innerHTML = emptyQuotationTableHtml();
+            document.getElementById('side-inv-deductions').innerHTML = `
+                <div class="flex gap-1 deduction-row items-center">
+                    <input type="text" value="선급금(계약금)" placeholder="항목명" class="w-1/2 border border-blue-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 ded-name transition" oninput="updateInvoiceCalc()">
+                    <input type="text" value="0" placeholder="금액" class="w-1/2 border border-blue-200 bg-blue-50 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 text-blue-700 font-medium text-right ded-amount transition" oninput="formatInputField(this); updateInvoiceCalc()">
+                    <button type="button" onclick="removeInvoiceDeduction(this)" class="text-rose-500 px-1 hover:bg-rose-50 rounded transition"><i class="fa-solid fa-minus"></i></button>
+                </div>`;
+            const stNote = document.querySelector('.out-st-note');
+            if (stNote) {
+                stNote.innerHTML = '상기와 같이 거래내역을 명세하여 통지합니다. 본 위탁용역의 항공·숙박·현지경비 등은 제3자 거래를 통한 수탁 대행 항목이며, 자체수익(운영관리비 등)에 대해서만 세금계산서를 발행합니다.';
+            }
+            const tbodySt = document.getElementById('tbody-statement');
+            tbodySt.innerHTML = '';
+            const tr = document.createElement('tr');
+            tr.className = 'item-row-st';
+            tr.innerHTML = statementRowHtml(1, '품목명', '-', 1, 0);
+            tbodySt.appendChild(tr);
+            document.getElementById('toggle-stamp-chk').checked = true;
+            setRep('lee');
+            setMode('quotation');
+            toggleStamp();
+            updateDoc();
+            calcTable();
+            updateInvoiceCalc();
+            calcStatement();
+            const sel = document.getElementById('preset-select');
+            if (sel) sel.value = '';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1355,24 +1630,14 @@
             }
 
             renderStatementDefaults();
-
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            document.getElementById('in-date').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('in-date').value = todayYmd();
+            updatePresetDropdown();
             
             setRep('lee'); 
             setMode('quotation');
             toggleStamp();
             updateDoc(); 
         });
-
-        function resetAll() {
-            if(confirm('모든 입력 내용을 초기화하시겠습니까?')) {
-                location.reload();
-            }
-        }
     </script>
 </body>
 </html>
