@@ -108,6 +108,11 @@
             color: #334155;
         }
         .q-table td.desc-col { text-align: left; padding-left: 8px; }
+        .q-table td.col-item[rowspan],
+        .q-table td.col-st-name[rowspan] {
+            vertical-align: middle !important;
+            font-weight: 700;
+        }
 
         /* 합계 영역 */
         .summary-table { width: 100%; border-collapse: collapse; margin-top: -2px; font-size: 10.5pt; }
@@ -212,7 +217,7 @@
                 <span class="font-bold text-slate-700 text-lg tracking-wide">Quick Tools: 스마트 견적서·청구서·거래명세서</span>
             </div>
             <div>
-                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-5 rounded-md shadow-md transition-all flex items-center gap-2">
+                <button onclick="printDoc()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-5 rounded-md shadow-md transition-all flex items-center gap-2">
                     <i class="fa-solid fa-print"></i> 인쇄 및 PDF 저장
                 </button>
             </div>
@@ -236,12 +241,18 @@
 
             <!-- 발신처 설정 -->
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div class="flex justify-between items-center mb-3">
+                <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
                     <label class="block text-xs font-bold text-slate-700"><i class="fa-solid fa-building mr-1"></i> 발신처 설정</label>
-                    <label class="flex items-center gap-1.5 cursor-pointer bg-white px-2 py-1 rounded border border-slate-200 shadow-sm hover:bg-slate-50">
-                        <input type="checkbox" id="toggle-stamp-chk" checked onchange="toggleStamp()" class="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer accent-blue-600">
-                        <span class="text-[11px] font-bold text-slate-600">직인 노출</span>
-                    </label>
+                    <div class="flex gap-1.5 flex-wrap justify-end">
+                        <label class="flex items-center gap-1.5 cursor-pointer bg-white px-2 py-1 rounded border border-slate-200 shadow-sm hover:bg-slate-50" title="항목이 많을 때 끄면 1장 인쇄에 유리합니다.">
+                            <input type="checkbox" id="toggle-bank-chk" checked onchange="toggleBankAccount()" class="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer accent-blue-600">
+                            <span class="text-[11px] font-bold text-slate-600">계좌 노출</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer bg-white px-2 py-1 rounded border border-slate-200 shadow-sm hover:bg-slate-50">
+                            <input type="checkbox" id="toggle-stamp-chk" checked onchange="toggleStamp()" class="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer accent-blue-600">
+                            <span class="text-[11px] font-bold text-slate-600">직인 노출</span>
+                        </label>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <button onclick="setRep('lee')" id="btn-rep-lee" class="bg-blue-100 text-blue-800 font-bold py-2 rounded-lg border border-blue-300 transition text-xs shadow-inner">주)투어메이커<br><span class="text-[10px] font-medium opacity-80">이재명 대표</span></button>
@@ -282,6 +293,14 @@
                     <label class="block text-[11px] font-bold text-slate-500 mb-1">건명 (프로젝트명)</label>
                     <input type="text" id="in-title" value="260805 백두산 단독행사_청주출발" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" oninput="updateDoc()">
                 </div>
+
+                <label class="flex items-start gap-2 cursor-pointer bg-amber-50 px-3 py-2.5 rounded-lg border border-amber-200 shadow-sm" title="연속된 같은 구분(품명)을 한 칸으로 묶어 표시합니다.">
+                    <input type="checkbox" id="in-merge-same-item" checked onchange="onMergeSameItemToggle()" class="mt-0.5 w-3.5 h-3.5 text-amber-600 rounded accent-amber-600 shrink-0">
+                    <span>
+                        <span class="block text-[11px] font-bold text-amber-900">같은 구분/품명 병합</span>
+                        <span class="block text-[10px] text-amber-800/80 mt-0.5 leading-relaxed">식대료·조식/중식/석식처럼 구분이 같으면 한 칸으로 표시 (금액은 행별 유지)</span>
+                    </span>
+                </label>
             </div>
 
             <!-- 견적서 전용 설정 -->
@@ -505,7 +524,7 @@
                         </thead>
                         <tbody id="tbody-quotation">
                             <tr class="item-row">
-                                <td contenteditable="true" class="font-bold text-slate-800">항공료</td>
+                                <td contenteditable="true" class="font-bold text-slate-800 col-item">항공료</td>
                                 <td contenteditable="true" class="desc-col text-slate-700">4월발권기준_유류포함</td>
                                 <td contenteditable="true" class="text-right pr-4 col-unit">700,000</td>
                                 <td contenteditable="true" class="col-qty">8</td>
@@ -515,7 +534,7 @@
                                 </td>
                             </tr>
                             <tr class="item-row">
-                                <td contenteditable="true" class="font-bold text-slate-800">항공료</td>
+                                <td contenteditable="true" class="font-bold text-slate-800 col-item">항공료</td>
                                 <td contenteditable="true" class="desc-col text-slate-700">항공좌석 데포짓 (입금확인)</td>
                                 <td contenteditable="true" class="text-right pr-4 col-unit">-200,000</td>
                                 <td contenteditable="true" class="col-qty">8</td>
@@ -526,7 +545,7 @@
                             </tr>
                             <!-- 빈 행 스페이서용 -->
                             <tr class="item-row">
-                                <td contenteditable="true"></td>
+                                <td contenteditable="true" class="col-item"></td>
                                 <td contenteditable="true" class="desc-col"></td>
                                 <td contenteditable="true" class="text-right pr-4 col-unit">0</td>
                                 <td contenteditable="true" class="col-qty"></td>
@@ -563,7 +582,7 @@
 
                 <!-- Footer: 입금 계좌 정보 -->
                 <div class="footer-section mt-4 flex justify-between items-end">
-                    <div class="w-[65%] info-box pb-3 pt-5">
+                    <div class="w-[65%] info-box pb-3 pt-5 bank-account-box">
                         <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
                         <div class="text-[10pt] space-y-2 mt-1">
                             <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
@@ -572,7 +591,7 @@
                             <div class="flex mt-2 pt-2 border-t border-slate-200"><div class="w-[100px] font-bold text-red-600">입금 기한 (Due)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 text-slate-800 font-bold out-due-date" contenteditable="true"></div></div>
                         </div>
                     </div>
-                    <div class="w-[30%] flex flex-col justify-end items-end pb-1">
+                    <div class="w-[30%] flex flex-col justify-end items-end pb-1 ml-auto">
                         <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[130px] opacity-90 mix-blend-multiply" alt="Tourmaker Logo">
                     </div>
                 </div>
@@ -659,7 +678,8 @@
                         </div>
                     </div>
                     
-                    <p class="text-center font-bold text-[12pt] mt-8 print:mt-6 text-slate-700">위와 같이 청구하오니, 아래 계좌로 입금하여 주시기 바랍니다.</p>
+                    <p class="text-center font-bold text-[12pt] mt-8 print:mt-6 text-slate-700 bank-account-hint">위와 같이 청구하오니, 아래 계좌로 입금하여 주시기 바랍니다.</p>
+                    <p class="text-center font-bold text-[12pt] mt-8 print:mt-6 text-slate-700 bank-account-hint-alt" style="display:none;">위와 같이 청구하오니, 확인 후 입금하여 주시기 바랍니다.</p>
                 </div>
 
                 <!-- 기타특이사항 (작성 시에만 표시) -->
@@ -670,7 +690,7 @@
 
                 <!-- Footer: 입금 계좌 정보 -->
                 <div class="footer-section mt-4 flex justify-between items-end">
-                    <div class="w-[65%] info-box pb-3 pt-5">
+                    <div class="w-[65%] info-box pb-3 pt-5 bank-account-box">
                         <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
                         <div class="text-[10pt] space-y-2 mt-1">
                             <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
@@ -679,7 +699,7 @@
                             <div class="flex mt-2 pt-2 border-t border-slate-200"><div class="w-[100px] font-bold text-red-600">입금 기한 (Due)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 text-slate-800 font-bold out-due-date" contenteditable="true"></div></div>
                         </div>
                     </div>
-                    <div class="w-[30%] flex flex-col justify-end items-end pb-1">
+                    <div class="w-[30%] flex flex-col justify-end items-end pb-1 ml-auto">
                         <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[130px] opacity-90 mix-blend-multiply" alt="Tourmaker Logo">
                     </div>
                 </div>
@@ -775,7 +795,7 @@
                         <div class="text-[9.5pt] text-slate-700 leading-relaxed out-st-note" contenteditable="true">상기와 같이 거래내역을 명세하여 통지합니다. 본 위탁용역의 항공·숙박·현지경비 등은 제3자 거래를 통한 수탁 대행 항목이며, 자체수익(운영관리비 등)에 대해서만 세금계산서를 발행합니다.</div>
                     </div>
                     <div class="flex justify-between items-end">
-                        <div class="w-[65%] info-box pb-3 pt-5">
+                        <div class="w-[65%] info-box pb-3 pt-5 bank-account-box">
                             <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
                             <div class="text-[10pt] space-y-2 mt-1">
                                 <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
@@ -783,7 +803,7 @@
                                 <div class="flex"><div class="w-[100px] font-bold text-slate-700">예 금 주 (Holder)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-holder"></div></div>
                             </div>
                         </div>
-                        <div class="w-[30%] flex flex-col justify-end items-end pb-1">
+                        <div class="w-[30%] flex flex-col justify-end items-end pb-1 ml-auto">
                             <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[130px] opacity-90 mix-blend-multiply" alt="Tourmaker Logo">
                         </div>
                     </div>
@@ -987,6 +1007,19 @@
             });
         }
 
+        function toggleBankAccount() {
+            const isChecked = document.getElementById('toggle-bank-chk').checked;
+            document.querySelectorAll('.bank-account-box').forEach(el => {
+                el.style.display = isChecked ? '' : 'none';
+            });
+            document.querySelectorAll('.bank-account-hint').forEach(el => {
+                el.style.display = isChecked ? '' : 'none';
+            });
+            document.querySelectorAll('.bank-account-hint-alt').forEach(el => {
+                el.style.display = isChecked ? 'none' : '';
+            });
+        }
+
         function updateDoc() {
             const docNo = document.getElementById('in-doc-no').value;
             const dateStr = document.getElementById('in-date').value;
@@ -1062,6 +1095,134 @@
             return { vat, grandTotal, vatText };
         }
 
+        // ================= 같은 구분/품명 셀 병합 (rowspan) =================
+        function isMergeSameItemEnabled() {
+            return !!document.getElementById('in-merge-same-item')?.checked;
+        }
+
+        function onMergeSameItemToggle() {
+            applyQuotationItemMerge();
+            applyStatementItemMerge();
+        }
+
+        function printDoc() {
+            applyQuotationItemMerge();
+            applyStatementItemMerge();
+            window.print();
+        }
+
+        /** rowspan 해제 → 각 행에 구분/품명 셀 복원 */
+        function unmergeItemCells(tbody, { rowSelector, nameClass, nameIndex, nameCellClass }) {
+            if (!tbody) return;
+            const rows = [...tbody.querySelectorAll(rowSelector)];
+
+            // 1) rowspan 셀의 현재 텍스트를 이어지는 행 data에 동기화
+            rows.forEach(row => {
+                const cell = row.querySelector('.' + nameClass);
+                if (!cell) return;
+                const span = cell.rowSpan || 1;
+                if (span <= 1) return;
+                const name = cell.innerText.trim();
+                let r = row.nextElementSibling;
+                for (let k = 1; k < span && r; k++) {
+                    r.dataset.itemName = name;
+                    r = r.nextElementSibling;
+                }
+                cell.removeAttribute('rowspan');
+                cell.style.verticalAlign = '';
+            });
+
+            // 2) 누락된 이름 셀 복원
+            rows.forEach(row => {
+                if (row.querySelector('.' + nameClass)) {
+                    delete row.dataset.itemName;
+                    return;
+                }
+                const td = document.createElement('td');
+                td.contentEditable = 'true';
+                td.className = nameCellClass;
+                td.innerText = row.dataset.itemName || '';
+                delete row.dataset.itemName;
+                const ref = row.children[nameIndex] || null;
+                row.insertBefore(td, ref);
+            });
+        }
+
+        /** 연속된 같은 구분/품명을 rowspan으로 병합 */
+        function mergeSameItemCells(tbody, { rowSelector, nameClass, enabled }) {
+            if (!tbody) return;
+            if (!enabled) return;
+
+            const rows = [...tbody.querySelectorAll(rowSelector)];
+            let i = 0;
+            while (i < rows.length) {
+                const nameCell = rows[i].querySelector('.' + nameClass);
+                const name = (nameCell?.innerText || '').trim();
+                if (!name) { i++; continue; }
+
+                let j = i + 1;
+                while (j < rows.length) {
+                    const nextName = (rows[j].querySelector('.' + nameClass)?.innerText || '').trim();
+                    if (nextName !== name) break;
+                    j++;
+                }
+
+                const span = j - i;
+                if (span > 1 && nameCell) {
+                    nameCell.rowSpan = span;
+                    nameCell.style.verticalAlign = 'middle';
+                    for (let k = i + 1; k < j; k++) {
+                        const c = rows[k].querySelector('.' + nameClass);
+                        if (c) {
+                            rows[k].dataset.itemName = name;
+                            c.remove();
+                        }
+                    }
+                }
+                i = j;
+            }
+        }
+
+        function applyQuotationItemMerge() {
+            const tbody = document.getElementById('tbody-quotation');
+            // 구버전 저장 HTML 호환: 첫 셀에 col-item 부여
+            tbody?.querySelectorAll('tr.item-row').forEach(row => {
+                if (row.querySelector('.col-item')) return;
+                const first = row.children[0];
+                if (!first) return;
+                if (first.classList.contains('desc-col') || first.classList.contains('col-unit') || first.classList.contains('col-qty')) return;
+                first.classList.add('col-item');
+            });
+            const opts = {
+                rowSelector: 'tr.item-row',
+                nameClass: 'col-item',
+                nameIndex: 0,
+                nameCellClass: 'font-bold text-slate-800 col-item',
+                enabled: isMergeSameItemEnabled()
+            };
+            unmergeItemCells(tbody, opts);
+            mergeSameItemCells(tbody, opts);
+        }
+
+        function applyStatementItemMerge() {
+            const tbody = document.getElementById('tbody-statement');
+            tbody?.querySelectorAll('tr.item-row-st').forEach(row => {
+                if (row.querySelector('.col-st-name')) return;
+                const cell = row.children[1];
+                if (!cell) return;
+                cell.classList.add('col-st-name');
+            });
+            const opts = {
+                rowSelector: 'tr.item-row-st',
+                nameClass: 'col-st-name',
+                nameIndex: 1,
+                nameCellClass: 'desc-col font-bold text-slate-800 col-st-name',
+                enabled: isMergeSameItemEnabled()
+            };
+            unmergeItemCells(tbody, opts);
+            mergeSameItemCells(tbody, opts);
+        }
+
         // ================= 견적서 연산 =================
         function calcTable() {
             let subTotal = 0;
@@ -1095,8 +1256,12 @@
 
         function getQuotationItems() {
             const items = [];
+            let carryName = '';
             document.querySelectorAll('#tbody-quotation tr.item-row').forEach(row => {
-                const name = (row.children[0]?.innerText || '').trim();
+                const nameCell = row.querySelector('.col-item');
+                if (nameCell) carryName = nameCell.innerText.trim();
+                else if (row.dataset.itemName) carryName = row.dataset.itemName.trim();
+                const name = carryName;
                 const desc = (row.querySelector('.desc-col')?.innerText || '').trim();
                 const unit = parseNum(row.querySelector('.col-unit')?.innerText);
                 const qtyRaw = (row.querySelector('.col-qty')?.innerText || '').trim();
@@ -1123,6 +1288,7 @@
                 tbody.appendChild(tr);
             });
             calcStatement();
+            applyStatementItemMerge();
             if (!silent) alert(`견적서 ${items.length}개 항목을 거래명세서로 연동했습니다.`);
             return true;
         }
@@ -1135,10 +1301,16 @@
 
         function addQuotationRow() {
             const tbody = document.getElementById('tbody-quotation');
+            unmergeItemCells(tbody, {
+                rowSelector: 'tr.item-row',
+                nameClass: 'col-item',
+                nameIndex: 0,
+                nameCellClass: 'font-bold text-slate-800 col-item'
+            });
             const tr = document.createElement('tr');
             tr.className = "item-row";
             tr.innerHTML = `
-                <td contenteditable="true" class="font-bold text-slate-800">항목명</td>
+                <td contenteditable="true" class="font-bold text-slate-800 col-item">항목명</td>
                 <td contenteditable="true" class="desc-col text-slate-700">상세 내역 입력</td>
                 <td contenteditable="true" class="text-right pr-4 col-unit">0</td>
                 <td contenteditable="true" class="col-qty">1</td>
@@ -1149,17 +1321,26 @@
             `;
             tbody.insertBefore(tr, tbody.lastElementChild); 
             calcTable();
+            applyQuotationItemMerge();
         }
 
         function removeRow(btn) {
             const tr = btn.closest('tr');
             const tbody = tr.parentElement;
+            unmergeItemCells(tbody, {
+                rowSelector: 'tr.item-row',
+                nameClass: 'col-item',
+                nameIndex: 0,
+                nameCellClass: 'font-bold text-slate-800 col-item'
+            });
             if(tbody.querySelectorAll('tr.item-row').length <= 2) {
                 alert('최소 1개의 항목은 남아있어야 합니다.');
+                applyQuotationItemMerge();
                 return;
             }
             tr.remove();
             calcTable();
+            applyQuotationItemMerge();
         }
 
         // ================= 거래명세서 연산 =================
@@ -1199,6 +1380,7 @@
                 tr.innerHTML = statementRowHtml(i + 1, r[0], r[1], r[2], formatNum(r[3]));
                 tbody.appendChild(tr);
             });
+            applyStatementItemMerge();
         }
 
         function addStatementRow() {
@@ -1207,12 +1389,19 @@
                 syncEl.checked = false;
             }
             const tbody = document.getElementById('tbody-statement');
+            unmergeItemCells(tbody, {
+                rowSelector: 'tr.item-row-st',
+                nameClass: 'col-st-name',
+                nameIndex: 1,
+                nameCellClass: 'desc-col font-bold text-slate-800 col-st-name'
+            });
             const no = tbody.querySelectorAll('tr.item-row-st').length + 1;
             const tr = document.createElement('tr');
             tr.className = 'item-row-st';
             tr.innerHTML = statementRowHtml(no, '품목명', '-', 1, 0);
             tbody.appendChild(tr);
             calcStatement();
+            applyStatementItemMerge();
         }
 
         function removeStatementRow(btn) {
@@ -1222,13 +1411,21 @@
             }
             const tr = btn.closest('tr');
             const tbody = tr.parentElement;
+            unmergeItemCells(tbody, {
+                rowSelector: 'tr.item-row-st',
+                nameClass: 'col-st-name',
+                nameIndex: 1,
+                nameCellClass: 'desc-col font-bold text-slate-800 col-st-name'
+            });
             if(tbody.querySelectorAll('tr.item-row-st').length <= 1) {
                 alert('최소 1개의 항목은 남아있어야 합니다.');
+                applyStatementItemMerge();
                 return;
             }
             tr.remove();
             renumberStatement();
             calcStatement();
+            applyStatementItemMerge();
         }
 
         function renumberStatement() {
@@ -1372,10 +1569,30 @@
                     amount: row.querySelector('.ded-amount').value
                 });
             });
-            return {
+
+            // 저장 HTML은 항상 평탄 행으로 (병합 상태는 토글만 저장)
+            const qOpts = {
+                rowSelector: 'tr.item-row',
+                nameClass: 'col-item',
+                nameIndex: 0,
+                nameCellClass: 'font-bold text-slate-800 col-item',
+                enabled: isMergeSameItemEnabled()
+            };
+            const stOpts = {
+                rowSelector: 'tr.item-row-st',
+                nameClass: 'col-st-name',
+                nameIndex: 1,
+                nameCellClass: 'desc-col font-bold text-slate-800 col-st-name',
+                enabled: isMergeSameItemEnabled()
+            };
+            unmergeItemCells(document.getElementById('tbody-quotation'), qOpts);
+            unmergeItemCells(document.getElementById('tbody-statement'), stOpts);
+
+            const data = {
                 mode: currentMode,
                 rep: currentRep,
                 showStamp: document.getElementById('toggle-stamp-chk').checked,
+                showBank: document.getElementById('toggle-bank-chk').checked,
                 docNo: document.getElementById('in-doc-no').value,
                 date: document.getElementById('in-date').value,
                 dateBlankMode: document.getElementById('in-date-blank-mode').value,
@@ -1383,6 +1600,7 @@
                 schoolAddr: document.getElementById('in-school-addr').value,
                 schoolManager: document.getElementById('in-school-manager').value,
                 title: document.getElementById('in-title').value,
+                mergeSameItem: isMergeSameItemEnabled(),
                 vatType: document.getElementById('in-vat-type').value,
                 qRoundUnit: getRoundUnit('in-q-round-unit'),
                 invTotal: document.getElementById('in-inv-total').value,
@@ -1398,6 +1616,10 @@
                 stNote: document.querySelector('.out-st-note') ? document.querySelector('.out-st-note').innerHTML : '',
                 savedAt: new Date().toISOString()
             };
+
+            mergeSameItemCells(document.getElementById('tbody-quotation'), qOpts);
+            mergeSameItemCells(document.getElementById('tbody-statement'), stOpts);
+            return data;
         }
 
         function applyFormData(data) {
@@ -1416,6 +1638,9 @@
             if (data.schoolAddr !== undefined) document.getElementById('in-school-addr').value = data.schoolAddr;
             if (data.schoolManager !== undefined) document.getElementById('in-school-manager').value = data.schoolManager;
             if (data.title !== undefined) document.getElementById('in-title').value = data.title;
+            if (data.mergeSameItem !== undefined) {
+                document.getElementById('in-merge-same-item').checked = !!data.mergeSameItem;
+            }
 
             if (data.vatType !== undefined) document.getElementById('in-vat-type').value = data.vatType;
             // 절사 단위 (구버전 체크박스 호환)
@@ -1464,12 +1689,18 @@
                 document.getElementById('toggle-stamp-chk').checked = data.showStamp;
                 toggleStamp();
             }
+            if (data.showBank !== undefined) {
+                document.getElementById('toggle-bank-chk').checked = data.showBank;
+            }
+            toggleBankAccount();
             if (data.mode !== undefined) setMode(data.mode);
 
             updateDoc();
             calcTable();
+            applyQuotationItemMerge();
             updateInvoiceCalc();
             calcStatement();
+            applyStatementItemMerge();
             suppressQuoteSync = false;
         }
 
@@ -1654,7 +1885,7 @@
         function emptyQuotationTableHtml() {
             return `
                 <tr class="item-row">
-                    <td contenteditable="true" class="font-bold text-slate-800">항목명</td>
+                    <td contenteditable="true" class="font-bold text-slate-800 col-item">항목명</td>
                     <td contenteditable="true" class="desc-col text-slate-700">상세 내역 입력</td>
                     <td contenteditable="true" class="text-right pr-4 col-unit">0</td>
                     <td contenteditable="true" class="col-qty">1</td>
@@ -1664,7 +1895,7 @@
                     </td>
                 </tr>
                 <tr class="item-row">
-                    <td contenteditable="true"></td>
+                    <td contenteditable="true" class="col-item"></td>
                     <td contenteditable="true" class="desc-col"></td>
                     <td contenteditable="true" class="text-right pr-4 col-unit">0</td>
                     <td contenteditable="true" class="col-qty"></td>
@@ -1697,6 +1928,7 @@
             document.getElementById('in-st-vat-type').value = 'item';
             document.getElementById('in-st-round-unit').value = '0';
             document.getElementById('in-st-sync-quote').checked = true;
+            document.getElementById('in-merge-same-item').checked = true;
             document.getElementById('tbody-quotation').innerHTML = emptyQuotationTableHtml();
             document.getElementById('side-inv-deductions').innerHTML = `
                 <div class="flex gap-1 deduction-row items-center">
@@ -1715,13 +1947,17 @@
             tr.innerHTML = statementRowHtml(1, '품목명', '-', 1, 0);
             tbodySt.appendChild(tr);
             document.getElementById('toggle-stamp-chk').checked = true;
+            document.getElementById('toggle-bank-chk').checked = true;
             setRep('lee');
             setMode('quotation');
             toggleStamp();
+            toggleBankAccount();
             updateDoc();
             calcTable();
+            applyQuotationItemMerge();
             updateInvoiceCalc();
             calcStatement();
+            applyStatementItemMerge();
             const sel = document.getElementById('preset-select');
             if (sel) sel.value = '';
         }
@@ -1740,20 +1976,31 @@
                     }
                 }, true);
 
-                docContainer.addEventListener('blur', function(e) {
-                    if(e.target.classList.contains('col-qty') || e.target.classList.contains('col-unit')) {
-                        let text = e.target.innerText.trim();
+                docContainer.addEventListener('focusout', function(e) {
+                    const t = e.target;
+                    if (!t || !t.classList) return;
+                    if (t.classList.contains('col-item')) {
+                        applyQuotationItemMerge();
+                        if (document.getElementById('in-st-sync-quote')?.checked) {
+                            syncQuotationToStatement(true);
+                        }
+                    }
+                    if (t.classList.contains('col-st-name')) {
+                        applyStatementItemMerge();
+                    }
+                    if(t.classList.contains('col-qty') || t.classList.contains('col-unit')) {
+                        let text = t.innerText.trim();
                         if(text !== '') {
                             let val = parseNum(text);
-                            e.target.innerText = val !== 0 ? formatNum(val) : '0';
+                            t.innerText = val !== 0 ? formatNum(val) : '0';
                         }
                         calcTable();
                     }
-                    if(e.target.classList.contains('col-st-qty') || e.target.classList.contains('col-st-unit')) {
-                        let text = e.target.innerText.trim();
+                    if(t.classList.contains('col-st-qty') || t.classList.contains('col-st-unit')) {
+                        let text = t.innerText.trim();
                         if(text !== '') {
                             let val = parseNum(text);
-                            e.target.innerText = val !== 0 ? formatNum(val) : '0';
+                            t.innerText = val !== 0 ? formatNum(val) : '0';
                         }
                         calcStatement();
                     }
@@ -1767,7 +2014,12 @@
             setRep('lee'); 
             setMode('quotation');
             toggleStamp();
-            updateDoc(); 
+            toggleBankAccount();
+            updateDoc();
+            calcTable();
+            applyQuotationItemMerge();
+            calcStatement();
+            applyStatementItemMerge();
         });
     </script>
 </body>
