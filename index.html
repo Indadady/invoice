@@ -119,6 +119,9 @@
         .summary-table td { padding: 8px 16px; border-bottom: 1px solid #e2e8f0; text-align: right; } /* 여백 축소 */
         .summary-table td.label-col { background-color: #f8fafc; font-weight: 700; text-align: center; width: 65%; border-right: 1px solid #e2e8f0;}
         .summary-table tr.grand-total td { background-color: #eff6ff; font-weight: 900; font-size: 12pt; border-bottom: 2px solid #1e293b; color: #1d4ed8; padding: 10px 16px; }
+        .summary-table tr.grand-total.has-per-person td { border-bottom: 1px solid #bfdbfe; }
+        .summary-table tr.per-person-row td { background-color: #f8fafc; font-weight: 700; font-size: 10.5pt; color: #334155; border-bottom: 2px solid #1e293b; padding: 8px 16px; }
+        .summary-table tr.per-person-row td.label-col { background-color: #f1f5f9; color: #475569; }
 
         /* 🔖 직인 (스탬프) */
         .stamp-box {
@@ -183,6 +186,7 @@
             .q-table td { padding: 4px 3px !important; line-height: 1.25 !important; font-size: 9.5pt !important; }
             .summary-table td { padding: 6px 12px !important; font-size: 10pt !important; }
             .summary-table tr.grand-total td { padding: 8px 12px !important; }
+            .summary-table tr.per-person-row td { padding: 6px 12px !important; font-size: 10pt !important; }
 
             /* 테이블 및 청구내역 하단 간격 강제 확보 */
             .print-table-wrap {
@@ -325,6 +329,15 @@
                             <option value="10000">만원 미만 절사</option>
                         </select>
                         <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">예: 합계 8,383,430 → 천원절사 시 8,383,000 / 만원절사 시 8,380,000</p>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-blue-200 mb-2" title="총합계 아래에 1인당 금액을 표시합니다.">
+                        <input type="checkbox" id="in-q-show-per-person" onchange="toggleQuotationPerPerson()" class="w-3.5 h-3.5 text-blue-600 rounded accent-blue-600">
+                        <span class="text-[11px] font-bold text-slate-600">1인당 금액 표시</span>
+                    </label>
+                    <div id="q-per-person-opts" class="hidden mb-3">
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">인원 수 (명)</label>
+                        <input type="text" id="in-q-pax" value="8" inputmode="numeric" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium" oninput="formatInputField(this); calcTable()">
+                        <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">총합계 ÷ 인원 (원 단위 반올림)</p>
                     </div>
                     <button onclick="addQuotationRow()" class="w-full bg-white border border-blue-300 text-blue-700 font-bold py-2.5 rounded-md text-xs hover:bg-blue-50 transition shadow-sm flex justify-center items-center gap-1.5">
                         <i class="fa-solid fa-plus"></i> 견적 품목 추가
@@ -571,6 +584,10 @@
                         <tr class="grand-total">
                             <td class="label-col tracking-widest text-[#1d4ed8]">총 합 계 (Grand Total)</td>
                             <td class="pr-4 whitespace-nowrap tracking-wider font-black text-[#1d4ed8]">₩ <span id="out-q-grandtotal-num">4,000,000</span> <span class="text-[11pt] font-bold text-[#1d4ed8] ml-1">(금 <span id="out-q-grandtotal-kr">사백만</span> 원)</span></td>
+                        </tr>
+                        <tr id="out-q-per-person-row" class="per-person-row" style="display:none;">
+                            <td class="label-col">1인당 금액 <span class="font-normal text-slate-500 text-[9pt]">(<span id="out-q-pax-label">8</span>명)</span><br><span class="text-[7.5pt] font-normal text-slate-500">Per Person</span></td>
+                            <td class="pr-4 whitespace-nowrap tracking-wide font-bold text-slate-800">₩ <span id="out-q-perperson-num">0</span> <span class="text-[10pt] font-normal text-slate-500 ml-1">(금 <span id="out-q-perperson-kr">영</span> 원)</span></td>
                         </tr>
                     </table>
                 </div>
@@ -1248,11 +1265,49 @@
             document.getElementById('out-q-vat').innerText = vatText;
             document.getElementById('out-q-grandtotal-num').innerText = formatNum(grandTotal);
             document.getElementById('out-q-grandtotal-kr').innerText = numberToKorean(grandTotal);
+            updateQuotationPerPerson(grandTotal);
 
             // 견적서 수정 시 거래명세서 자동 연동
             if (!suppressQuoteSync && document.getElementById('in-st-sync-quote')?.checked) {
                 syncQuotationToStatement(true);
             }
+        }
+
+        function getQuotationPax() {
+            const n = parseNum(document.getElementById('in-q-pax')?.value);
+            return n > 0 ? n : 0;
+        }
+
+        function toggleQuotationPerPerson() {
+            const on = !!document.getElementById('in-q-show-per-person')?.checked;
+            document.getElementById('q-per-person-opts')?.classList.toggle('hidden', !on);
+            calcTable();
+        }
+
+        function updateQuotationPerPerson(grandTotal) {
+            const show = !!document.getElementById('in-q-show-per-person')?.checked;
+            const pax = getQuotationPax();
+            const row = document.getElementById('out-q-per-person-row');
+            const grandTr = document.querySelector('#page-quotation .summary-table tr.grand-total');
+            if (!row) return;
+
+            document.getElementById('q-per-person-opts')?.classList.toggle('hidden', !show);
+
+            if (!show || pax < 1) {
+                row.style.display = 'none';
+                grandTr?.classList.remove('has-per-person');
+                return;
+            }
+
+            const per = Math.round(grandTotal / pax);
+            const paxLabel = document.getElementById('out-q-pax-label');
+            const numEl = document.getElementById('out-q-perperson-num');
+            const krEl = document.getElementById('out-q-perperson-kr');
+            if (paxLabel) paxLabel.innerText = String(pax);
+            if (numEl) numEl.innerText = formatNum(per);
+            if (krEl) krEl.innerText = numberToKorean(per);
+            row.style.display = '';
+            grandTr?.classList.add('has-per-person');
         }
 
         function getQuotationItems() {
@@ -1604,6 +1659,8 @@
                 mergeSameItem: isMergeSameItemEnabled(),
                 vatType: document.getElementById('in-vat-type').value,
                 qRoundUnit: getRoundUnit('in-q-round-unit'),
+                showPerPerson: document.getElementById('in-q-show-per-person').checked,
+                qPax: document.getElementById('in-q-pax').value,
                 invTotal: document.getElementById('in-inv-total').value,
                 invSettle: document.getElementById('in-inv-settle').value,
                 invDeductions: invDeductions,
@@ -1650,6 +1707,10 @@
             } else if (data.qRound100) {
                 document.getElementById('in-q-round-unit').value = '100';
             }
+            if (data.showPerPerson !== undefined) {
+                document.getElementById('in-q-show-per-person').checked = !!data.showPerPerson;
+            }
+            if (data.qPax !== undefined) document.getElementById('in-q-pax').value = data.qPax;
             if (data.invTotal !== undefined) document.getElementById('in-inv-total').value = data.invTotal;
             if (data.invSettle !== undefined) document.getElementById('in-inv-settle').value = data.invSettle;
             if (data.dueDate !== undefined) document.getElementById('in-due-date').value = data.dueDate;
@@ -1922,6 +1983,8 @@
             document.getElementById('in-title').value = '';
             document.getElementById('in-vat-type').value = 'zero';
             document.getElementById('in-q-round-unit').value = '0';
+            document.getElementById('in-q-show-per-person').checked = false;
+            document.getElementById('in-q-pax').value = '1';
             document.getElementById('in-inv-total').value = '';
             document.getElementById('in-inv-settle').value = '';
             document.getElementById('in-due-date').value = '';
