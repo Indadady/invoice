@@ -151,6 +151,42 @@
         .row-ctrl { position: absolute; right: -30px; top: 50%; transform: translateY(-50%); display: flex; opacity: 0; transition: 0.2s; z-index: 20; }
         tr:hover .row-ctrl { opacity: 1; }
 
+        /* 하단: 특이사항·계좌(좌) / 로고(우) — 인쇄 시 겹침 방지 */
+        .footer-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 16px;
+            margin-top: auto;
+            flex-shrink: 0;
+            width: 100%;
+        }
+        .footer-main {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .doc-logo-wrap {
+            flex: 0 0 130px;
+            width: 130px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            align-self: flex-end;
+            position: relative;
+            z-index: 1;
+        }
+        .doc-logo-wrap img {
+            width: 130px;
+            max-width: 100%;
+            height: auto;
+            display: block;
+            opacity: 0.9;
+            mix-blend-mode: multiply;
+        }
+
         /* 🖨️ 인쇄 디자인 뷰: 타이틀 바짝 올리기 & 1장 꽉 채우기 극한 최적화 */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
@@ -162,7 +198,7 @@
             .a4-page { 
                 box-shadow: none !important; 
                 margin: 0 !important; 
-                padding: 8mm 15mm 10mm 15mm !important; /* 하단 여백도 축소 */
+                padding: 8mm 15mm 14mm 15mm !important; /* 하단 로고·특이사항 여유 */
                 width: 210mm !important; 
                 height: 297mm !important; 
                 page-break-after: always;
@@ -186,7 +222,9 @@
 
             /* 테이블 및 청구내역 하단 간격 강제 확보 */
             .print-table-wrap {
-                margin-bottom: 8mm !important; 
+                margin-bottom: 5mm !important;
+                min-height: 0 !important;
+                flex: 1 1 auto !important;
             }
             .print-border-black {
                 border-color: #1e293b !important;
@@ -199,8 +237,33 @@
                 margin-bottom: 1rem !important;
             }
 
-            /* Footer 영역 밑으로 강제 밀어내기 */
-            .footer-section { margin-top: auto !important; }
+            /* Footer: 페이지 하단 고정 + 로고/특이사항 겹침 방지 */
+            .footer-section {
+                margin-top: auto !important;
+                flex-shrink: 0 !important;
+                gap: 5mm !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+                position: relative;
+                z-index: 2;
+            }
+            .footer-main { gap: 3.5mm !important; }
+            .out-remarks-box {
+                margin-top: 0 !important;
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+            .doc-logo-wrap {
+                flex: 0 0 28mm !important;
+                width: 28mm !important;
+                max-width: 28mm !important;
+                overflow: visible;
+            }
+            .doc-logo-wrap img {
+                width: 28mm !important;
+                max-width: 28mm !important;
+                height: auto !important;
+            }
         }
     </style>
 </head>
@@ -575,25 +638,25 @@
                     </table>
                 </div>
 
-                <!-- 기타특이사항 (작성 시에만 표시) -->
-                <div class="out-remarks-box info-box pb-3 pt-5 mt-4" style="display:none;">
-                    <div class="info-box-title">기타특이사항 (Remarks)</div>
-                    <div class="text-[9.5pt] text-slate-700 leading-relaxed whitespace-pre-wrap out-remarks"></div>
-                </div>
-
-                <!-- Footer: 입금 계좌 정보 -->
-                <div class="footer-section mt-4 flex justify-between items-end">
-                    <div class="w-[65%] info-box pb-3 pt-5 bank-account-box">
-                        <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
-                        <div class="text-[10pt] space-y-2 mt-1">
-                            <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
-                            <div class="flex"><div class="w-[100px] font-bold text-slate-700 leading-tight">계좌번호<br><span class="font-normal text-[8pt] text-slate-500">(Account)</span></div><div class="w-4 text-slate-800 pt-1">:</div><div class="flex-1 font-black text-[13pt] text-blue-700 tracking-wider pt-1 out-rep-account"></div></div>
-                            <div class="flex"><div class="w-[100px] font-bold text-slate-700">예 금 주 (Holder)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-holder"></div></div>
-                            <div class="flex mt-2 pt-2 border-t border-slate-200"><div class="w-[100px] font-bold text-red-600">입금 기한 (Due)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 text-slate-800 font-bold out-due-date" contenteditable="true"></div></div>
+                <!-- Footer: 특이사항·계좌(좌) / 로고(우) — 인쇄 시 겹침 방지 -->
+                <div class="footer-section mt-4">
+                    <div class="footer-main">
+                        <div class="out-remarks-box info-box pb-3 pt-5" style="display:none;">
+                            <div class="info-box-title">기타특이사항 (Remarks)</div>
+                            <div class="text-[9.5pt] text-slate-700 leading-relaxed whitespace-pre-wrap out-remarks"></div>
+                        </div>
+                        <div class="info-box pb-3 pt-5 bank-account-box">
+                            <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
+                            <div class="text-[10pt] space-y-2 mt-1">
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700 leading-tight">계좌번호<br><span class="font-normal text-[8pt] text-slate-500">(Account)</span></div><div class="w-4 text-slate-800 pt-1">:</div><div class="flex-1 font-black text-[13pt] text-blue-700 tracking-wider pt-1 out-rep-account"></div></div>
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700">예 금 주 (Holder)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-holder"></div></div>
+                                <div class="flex mt-2 pt-2 border-t border-slate-200"><div class="w-[100px] font-bold text-red-600">입금 기한 (Due)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 text-slate-800 font-bold out-due-date" contenteditable="true"></div></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="w-[30%] flex flex-col justify-end items-end pb-1 ml-auto">
-                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[130px] opacity-90 mix-blend-multiply" alt="Tourmaker Logo">
+                    <div class="doc-logo-wrap">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" alt="Tourmaker Logo">
                     </div>
                 </div>
             </div>
@@ -683,25 +746,25 @@
                     <p class="text-center font-bold text-[12pt] mt-8 print:mt-6 text-slate-700 bank-account-hint-alt" style="display:none;">위와 같이 청구하오니, 확인 후 입금하여 주시기 바랍니다.</p>
                 </div>
 
-                <!-- 기타특이사항 (작성 시에만 표시) -->
-                <div class="out-remarks-box info-box pb-3 pt-5 mt-4" style="display:none;">
-                    <div class="info-box-title">기타특이사항 (Remarks)</div>
-                    <div class="text-[9.5pt] text-slate-700 leading-relaxed whitespace-pre-wrap out-remarks"></div>
-                </div>
-
-                <!-- Footer: 입금 계좌 정보 -->
-                <div class="footer-section mt-4 flex justify-between items-end">
-                    <div class="w-[65%] info-box pb-3 pt-5 bank-account-box">
-                        <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
-                        <div class="text-[10pt] space-y-2 mt-1">
-                            <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
-                            <div class="flex"><div class="w-[100px] font-bold text-slate-700 leading-tight">계좌번호<br><span class="font-normal text-[8pt] text-slate-500">(Account)</span></div><div class="w-4 text-slate-800 pt-1">:</div><div class="flex-1 font-black text-[13pt] text-blue-700 tracking-wider pt-1 out-rep-account"></div></div>
-                            <div class="flex"><div class="w-[100px] font-bold text-slate-700">예 금 주 (Holder)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-holder"></div></div>
-                            <div class="flex mt-2 pt-2 border-t border-slate-200"><div class="w-[100px] font-bold text-red-600">입금 기한 (Due)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 text-slate-800 font-bold out-due-date" contenteditable="true"></div></div>
+                <!-- Footer: 특이사항·계좌(좌) / 로고(우) — 인쇄 시 겹침 방지 -->
+                <div class="footer-section mt-4">
+                    <div class="footer-main">
+                        <div class="out-remarks-box info-box pb-3 pt-5" style="display:none;">
+                            <div class="info-box-title">기타특이사항 (Remarks)</div>
+                            <div class="text-[9.5pt] text-slate-700 leading-relaxed whitespace-pre-wrap out-remarks"></div>
+                        </div>
+                        <div class="info-box pb-3 pt-5 bank-account-box">
+                            <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
+                            <div class="text-[10pt] space-y-2 mt-1">
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700 leading-tight">계좌번호<br><span class="font-normal text-[8pt] text-slate-500">(Account)</span></div><div class="w-4 text-slate-800 pt-1">:</div><div class="flex-1 font-black text-[13pt] text-blue-700 tracking-wider pt-1 out-rep-account"></div></div>
+                                <div class="flex"><div class="w-[100px] font-bold text-slate-700">예 금 주 (Holder)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-holder"></div></div>
+                                <div class="flex mt-2 pt-2 border-t border-slate-200"><div class="w-[100px] font-bold text-red-600">입금 기한 (Due)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 text-slate-800 font-bold out-due-date" contenteditable="true"></div></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="w-[30%] flex flex-col justify-end items-end pb-1 ml-auto">
-                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[130px] opacity-90 mix-blend-multiply" alt="Tourmaker Logo">
+                    <div class="doc-logo-wrap">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" alt="Tourmaker Logo">
                     </div>
                 </div>
             </div>
@@ -789,14 +852,14 @@
                     </table>
                 </div>
 
-                <!-- Footer: 기타사항 + 계좌 + 로고 -->
+                <!-- Footer: 기타사항·계좌(좌) / 로고(우) — 인쇄 시 겹침 방지 -->
                 <div class="footer-section mt-4">
-                    <div class="info-box pb-3 pt-5 mb-3">
-                        <div class="info-box-title">기타 사항 (Note)</div>
-                        <div class="text-[9.5pt] text-slate-700 leading-relaxed out-st-note" contenteditable="true">상기와 같이 거래내역을 명세하여 통지합니다. 본 위탁용역의 항공·숙박·현지경비 등은 제3자 거래를 통한 수탁 대행 항목이며, 자체수익(운영관리비 등)에 대해서만 세금계산서를 발행합니다.</div>
-                    </div>
-                    <div class="flex justify-between items-end">
-                        <div class="w-[65%] info-box pb-3 pt-5 bank-account-box">
+                    <div class="footer-main">
+                        <div class="info-box pb-3 pt-5">
+                            <div class="info-box-title">기타 사항 (Note)</div>
+                            <div class="text-[9.5pt] text-slate-700 leading-relaxed out-st-note" contenteditable="true">상기와 같이 거래내역을 명세하여 통지합니다. 본 위탁용역의 항공·숙박·현지경비 등은 제3자 거래를 통한 수탁 대행 항목이며, 자체수익(운영관리비 등)에 대해서만 세금계산서를 발행합니다.</div>
+                        </div>
+                        <div class="info-box pb-3 pt-5 bank-account-box">
                             <div class="info-box-title">입금 계좌 정보 (Bank Account)</div>
                             <div class="text-[10pt] space-y-2 mt-1">
                                 <div class="flex"><div class="w-[100px] font-bold text-slate-700">은 행 명 (Bank)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-bank"></div></div>
@@ -804,9 +867,9 @@
                                 <div class="flex"><div class="w-[100px] font-bold text-slate-700">예 금 주 (Holder)</div><div class="w-4 text-slate-800">:</div><div class="flex-1 font-bold text-slate-800 out-rep-holder"></div></div>
                             </div>
                         </div>
-                        <div class="w-[30%] flex flex-col justify-end items-end pb-1 ml-auto">
-                            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" class="w-[130px] opacity-90 mix-blend-multiply" alt="Tourmaker Logo">
-                        </div>
+                    </div>
+                    <div class="doc-logo-wrap">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" alt="Tourmaker Logo">
                     </div>
                 </div>
             </div>
